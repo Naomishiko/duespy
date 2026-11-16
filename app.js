@@ -1,0 +1,496 @@
+/* ============================================================
+   Duespy — client-side detective engine
+   Sample case file. All detection, forecasting and the cancel
+   advisor run in the browser with plain rules.
+   ============================================================ */
+(() => {
+  'use strict';
+
+  const TODAY = new Date();
+  TODAY.setHours(0, 0, 0, 0);
+
+  const money = (n, dec = 2) =>
+    '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dowNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  /* ── the case file ─────────────────────────────────────── */
+  const SUBSCRIPTIONS = [
+    { id:'netflix', name:'Netflix',        cat:'Streaming',    brand:'#e50914', letter:'N',
+      price:15.49, cycle:'monthly', priceThen:10.99, signedUp:'2019-03-11', day:14,
+      lastUsed:88,  usage:'none',        dupGroup:null,    note:'No episode finished in 14 months.' },
+    { id:'spotify', name:'Spotify Premium',cat:'Music',        brand:'#1db954', letter:'S',
+      price:11.99, cycle:'monthly', priceThen:9.99,  signedUp:'2018-07-02', day:3,
+      lastUsed:1,   usage:'heavy',       dupGroup:null,    note:'Used nearly every day. Keep.' },
+    { id:'adobe',   name:'Adobe CC All Apps', cat:'Creative', brand:'#ff0000', letter:'A',
+      price:59.99, cycle:'monthly', priceThen:52.99, signedUp:'2021-01-20', day:22,
+      lastUsed:12,  usage:'light',       dupGroup:null,    note:'Price rose 13% without notice.' },
+    { id:'icloud',  name:'iCloud+ 2TB',    cat:'Cloud storage',brand:'#3b82f6', letter:'i',
+      price:9.99,  cycle:'monthly', priceThen:9.99,  signedUp:'2020-05-05', day:9,
+      lastUsed:2,   usage:'light',       dupGroup:'cloud', note:'Overlaps with Google One.' },
+    { id:'googleone',name:'Google One 2TB',cat:'Cloud storage',brand:'#4285f4', letter:'G',
+      price:9.99,  cycle:'monthly', priceThen:9.99,  signedUp:'2022-02-18', day:27,
+      lastUsed:2,   usage:'light',       dupGroup:'cloud', note:'Overlaps with iCloud+.' },
+    { id:'disney',  name:'Disney+',        cat:'Streaming',    brand:'#113ccf', letter:'D',
+      price:13.99, cycle:'monthly', priceThen:7.99,  signedUp:'2020-11-12', day:6,
+      lastUsed:41,  usage:'none',        dupGroup:null,    note:'Used for one season, then forgotten.' },
+    { id:'duolingo',name:'Duolingo Max',   cat:'Learning',     brand:'#58cc02', letter:'L',
+      price:9.99,  cycle:'monthly', priceThen:6.99,  signedUp:'2023-04-01', day:18,
+      lastUsed:71,  usage:'none',        dupGroup:null,    note:'71 days since the last lesson.' },
+    { id:'nyt',     name:'NYT All Access', cat:'News',         brand:'#121212', letter:'T',
+      price:17.00, cycle:'monthly', priceThen:6.25,  signedUp:'2022-08-30', day:11,
+      lastUsed:3,   usage:'moderate',    dupGroup:null,    note:'Intro rate expired; tripled in price.' },
+    { id:'amazon',  name:'Amazon Prime',   cat:'Shopping',     brand:'#ff9900', letter:'P',
+      price:139.00,cycle:'annual',  priceThen:119.00,signedUp:'2017-06-14', day:null, dayOfYear:null, month:6,
+      lastUsed:2,   usage:'heavy',       dupGroup:null,    note:'Used for delivery weekly.' },
+    { id:'notion',  name:'Notion Plus',    cat:'Productivity', brand:'#111111', letter:'N',
+      price:96.00, cycle:'annual',  priceThen:96.00, signedUp:'2023-09-01', month:9,
+      lastUsed:4,   usage:'moderate',    dupGroup:null,    note:'Shared with the household.' },
+    { id:'peloton', name:'Peloton App One',cat:'Fitness',      brand:'#df1c2f', letter:'P',
+      price:12.99, cycle:'monthly', priceThen:12.99, signedUp:'2021-02-08', day:25,
+      lastUsed:154, usage:'none',        dupGroup:null,    note:'The bike was sold in June.' },
+    { id:'audible', name:'Audible Premium',cat:'Audio',        brand:'#f8991c', letter:'A',
+      price:14.95, cycle:'monthly', priceThen:14.95, signedUp:'2022-12-03', day:19,
+      lastUsed:29,  usage:'light',       dupGroup:null,    note:'Two credits unused.' },
+    { id:'hulu',    name:'Hulu (no ads)',  cat:'Streaming',    brand:'#1ce783', letter:'H',
+      price:18.99, cycle:'monthly', priceThen:12.99, signedUp:'2021-09-09', day:16,
+      lastUsed:6,   usage:'moderate',    dupGroup:null,    note:'Kept for one show.' },
+    { id:'dropbox', name:'Dropbox Plus',   cat:'Cloud storage',brand:'#0061ff', letter:'D',
+      price:11.99, cycle:'monthly', priceThen:9.99,  signedUp:'2019-10-22', day:8,
+      lastUsed:120, usage:'none',        dupGroup:'cloud', note:'Third cloud drive. Overlaps.' },
+  ];
+
+  const CYCLE_DAYS = { monthly: 30.44, quarterly: 91.31, annual: 365.25, weekly: 7 };
+
+  const monthlyCost = (s) => {
+    if (s.cycle === 'annual') return s.price / 12;
+    if (s.cycle === 'quarterly') return s.price / 3;
+    if (s.cycle === 'weekly') return (s.price * 52) / 12;
+    return s.price;
+  };
+
+  const cycleLabel = (s) => ({ monthly:'/mo', annual:'/yr', quarterly:'/qtr', weekly:'/wk' }[s.cycle]);
+
+  /* ── classification: which verdict does this deserve? ──── */
+  function classify(s) {
+    const dup = s.dupGroup && SUBSCRIPTIONS.some(o => o.id !== s.id && o.dupGroup === s.dupGroup);
+    const rose = s.price > s.priceThen + 0.005;
+    const creepPct = ((s.price - s.priceThen) / s.priceThen) * 100;
+    const monthly = monthlyCost(s);
+
+    if (s.usage === 'none' && monthly >= 8) return { verdict:'cancel', dup, rose, creepPct };
+    if (dup && s.usage !== 'heavy') return { verdict:'cancel', dup, rose, creepPct };
+    if (s.usage === 'none') return { verdict:'review', dup, rose, creepPct };
+    if (s.lastUsed >= 45) return { verdict:'review', dup, rose, creepPct };
+    if (s.usage === 'light' && monthly >= 20) return { verdict:'review', dup, rose, creepPct };
+    if (creepPct >= 40 && s.usage !== 'heavy') return { verdict:'review', dup, rose, creepPct };
+    if (s.lastUsed >= 21) return { verdict:'review', dup, rose, creepPct };
+    return { verdict:'keep', dup, rose, creepPct };
+  }
+
+  /* ── next charge date ──────────────────────────────────── */
+  function nextCharge(s) {
+    const d = new Date(TODAY);
+    if (s.cycle === 'annual') {
+      const m = (s.month || TODAY.getMonth() + 1) - 1;
+      let y = TODAY.getFullYear();
+      let c = new Date(y, m, Math.min(s.day || 1, 28));
+      if (c < TODAY) c = new Date(y + 1, m, Math.min(s.day || 1, 28));
+      return c;
+    }
+    if (s.cycle === 'monthly') {
+      const day = s.day || 1;
+      let c = new Date(d.getFullYear(), d.getMonth(), day);
+      if (c < TODAY) c = new Date(d.getFullYear(), d.getMonth() + 1, day);
+      return c;
+    }
+    if (s.cycle === 'weekly') {
+      const day = s.day || 1;
+      let c = new Date(d.getFullYear(), d.getMonth(), day);
+      while (c < TODAY) c = new Date(c.getTime() + 7 * 864e5);
+      return c;
+    }
+    return new Date(d.getTime() + 15 * 864e5);
+  }
+
+  const daysUntil = (date) => Math.round((date - TODAY) / 864e5);
+
+  /* ── state ─────────────────────────────────────────────── */
+  const state = {
+    filter: 'all',
+    annual: false,
+    cut: new Set(),
+  };
+
+  const byId = (id) => SUBSCRIPTIONS.find(s => s.id === id);
+  const isCut = (s) => state.cut.has(s.id);
+
+  /* ── transaction feed (hero) ───────────────────────────── */
+  const TXNS = [
+    { merch:'SQ *SPOTIFYUSA',        meta:'Stockholm SE',        amt:11.99, rec:true,  tag:'Recurring · monthly · biller matched' },
+    { merch:'WHOLE FOODS MKT #1042', meta:'Card ···4417',        amt:86.40, rec:false },
+    { merch:'NETFLIX.COM',           meta:'Los Gatos CA',        amt:15.49, rec:true,  tag:'Recurring · monthly · price +41% since 2019' },
+    { merch:'UBER TRIP',             meta:'Card ···4417',        amt:23.10, rec:false },
+    { merch:'ADOBE *888-…',          meta:'San Jose CA',         amt:59.99, rec:true,  tag:'Recurring · monthly · increased in March' },
+    { merch:'SHELL OIL 57483',       meta:'Card ···4417',        amt:54.02, rec:false },
+    { merch:'APPLE.COM/BILL',        meta:'Cupertino CA',        amt:9.99,  rec:true,  tag:'Recurring · monthly · duplicate of Google One' },
+    { merch:'DUOLINGO.COM',          meta:'Pittsburgh PA',       amt:9.99,  rec:true,  tag:'Recurring · monthly · idle 71 days' },
+    { merch:'AMZN Mktp US*2H4L9',    meta:'Card ···4417',        amt:38.77, rec:false },
+  ];
+
+  function renderTxns() {
+    const list = document.getElementById('txnList');
+    if (!list) return;
+    list.innerHTML = '';
+    let i = 0, found = 0;
+    const step = () => {
+      if (i >= TXNS.length) {
+        document.getElementById('txnNote').textContent = 'Pattern confirmed. Opening the case board.';
+        return;
+      }
+      const t = TXNS[i];
+      const li = document.createElement('li');
+      li.className = 'txn' + (t.rec ? ' is-recurring' : '');
+      li.style.animationDelay = (i * 90) + 'ms';
+      li.innerHTML = `
+        <span class="txn-mark">${t.rec ? '◆' : '·'}</span>
+        <span class="txn-merch">${t.merch}<small>${t.meta}</small></span>
+        <span class="txn-amt">${money(t.amt)}</span>
+        ${t.tag ? `<span class="txn-tag">${t.tag}</span>` : ''}`;
+      list.appendChild(li);
+      if (t.rec) {
+        found++;
+        document.getElementById('txnRecurring').textContent = found;
+      }
+      i++;
+      setTimeout(step, 520);
+    };
+    setTimeout(step, 400);
+  }
+
+  /* ── KPIs ──────────────────────────────────────────────── */
+  function renderKPIs() {
+    const active = SUBSCRIPTIONS.filter(s => !isCut(s));
+    const perMonth = active.reduce((a, s) => a + monthlyCost(s), 0);
+    const perYear = perMonth * 12;
+
+    const upcoming = active
+      .map(s => ({ s, d: nextCharge(s), days: daysUntil(nextCharge(s)) }))
+      .filter(x => x.days <= 30);
+
+    const save = active
+      .filter(s => classify(s).verdict === 'cancel')
+      .reduce((a, s) => a + monthlyCost(s) * 12, 0);
+
+    const set = (sel, txt) => { const el = document.querySelector(sel); if (el) el.textContent = txt; };
+
+    set('#kpiCount', `${active.length} active subscription${active.length === 1 ? '' : 's'}`);
+    set('#kpiUpcoming', money(upcoming.reduce((a, x) => a + x.s.price, 0), 2));
+    set('#kpiUpcomingMeta', `${upcoming.length} charge${upcoming.length === 1 ? '' : 's'} landing`);
+    set('#kpiSave', money(save, 0));
+    set('#kpiSaveMeta', state.cut.size
+      ? `${state.cut.size} marked to cut`
+      : 'from flagged subscriptions');
+
+    const [mEl, yEl] = document.querySelectorAll('.kpi .kpi-val[data-count]');
+    if (mEl) mEl.textContent = money(perMonth, 2);
+    if (yEl) yEl.textContent = money(perYear, 2);
+  }
+
+  /* ── subscription cards ────────────────────────────────── */
+  function renderSubs() {
+    const grid = document.getElementById('subGrid');
+    if (!grid) return;
+
+    const withVerdict = SUBSCRIPTIONS.map(s => ({ s, c: classify(s) }));
+    const counts = {
+      all: withVerdict.length,
+      review: withVerdict.filter(x => x.c.verdict === 'review').length,
+      cancel: withVerdict.filter(x => x.c.verdict === 'cancel').length,
+      duplicate: withVerdict.filter(x => x.c.dup).length,
+    };
+    document.getElementById('cAll').textContent = counts.all;
+    document.getElementById('cReview').textContent = counts.review;
+    document.getElementById('cCancel').textContent = counts.cancel;
+    document.getElementById('cDup').textContent = counts.duplicate;
+
+    const shown = withVerdict
+      .filter(x => {
+        if (state.filter === 'all') return true;
+        if (state.filter === 'duplicate') return x.c.dup;
+        return x.c.verdict === state.filter;
+      })
+      .sort((a, b) => {
+        const order = { cancel: 0, review: 1, keep: 2 };
+        return order[a.c.verdict] - order[b.c.verdict] || monthlyCost(b.s) - monthlyCost(a.s);
+      });
+
+    grid.innerHTML = shown.map(({ s, c }) => {
+      const cut = isCut(s);
+      const next = nextCharge(s);
+      const nd = daysUntil(next);
+      const costNow = state.annual ? monthlyCost(s) * 12 : monthlyCost(s);
+      const flags = [];
+      if (c.dup) flags.push(`<span class="flag warn">Duplicate</span>`);
+      if (c.rose) flags.push(`<span class="flag warn">+${c.creepPct.toFixed(0)}% price</span>`);
+      if (s.lastUsed >= 45) flags.push(`<span class="flag warn">Idle ${s.lastUsed}d</span>`);
+      if (s.usage === 'heavy') flags.push(`<span class="flag good">In daily use</span>`);
+      if (s.cycle === 'annual') flags.push(`<span class="flag">Annual</span>`);
+
+      return `
+      <article class="sub-card ${cut ? 'is-cut' : ''}" data-id="${s.id}">
+        <div class="sub-top">
+          <span class="sub-logo" style="--brand:${s.brand}">${s.letter}</span>
+          <div>
+            <h4 class="sub-name">${s.name}</h4>
+            <p class="sub-cat">${s.cat}</p>
+          </div>
+          <div class="sub-price">
+            <p class="p">${money(state.annual ? monthlyCost(s) * 12 : s.price, 2)}</p>
+            <p class="cyc">${state.annual ? '/yr' : cycleLabel(s)}</p>
+          </div>
+        </div>
+        <div class="sub-mid">
+          <span class="stamp ${c.verdict}">${c.verdict === 'keep' ? 'Keep' : c.verdict === 'review' ? 'Review' : 'Cut'}</span>
+          <div class="sub-flags">${flags.join('')}</div>
+        </div>
+        <div class="sub-foot">
+          <span class="sub-next">Next charge <b>${monthNames[next.getMonth()]} ${next.getDate()}</b> · in ${nd} day${nd === 1 ? '' : 's'}</span>
+          <button class="sub-act ${cut ? 'restore' : ''}" data-toggle="${s.id}">${cut ? 'Restore' : 'Mark to cut'}</button>
+        </div>
+      </article>`;
+    }).join('');
+
+    document.getElementById('subEmpty').hidden = shown.length > 0;
+    grid.querySelectorAll('[data-toggle]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.toggle;
+        state.cut.has(id) ? state.cut.delete(id) : state.cut.add(id);
+        renderAll();
+      });
+    });
+  }
+
+  /* ── upcoming calendar ─────────────────────────────────── */
+  function renderUpcoming() {
+    const rail = document.getElementById('calRail');
+    if (!rail) return;
+
+    const charges = SUBSCRIPTIONS.filter(s => !isCut(s)).map(s => ({
+      s, date: nextCharge(s), days: daysUntil(nextCharge(s)),
+    })).filter(x => x.days <= 45);
+
+    // group by day
+    const groups = new Map();
+    charges.forEach(x => {
+      const k = x.days;
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(x);
+    });
+    const maxDay = Math.max(...charges.map(x => x.s.price), 1);
+
+    rail.innerHTML = Array.from({ length: 46 }, (_, i) => {
+      const d = new Date(TODAY.getTime() + i * 864e5);
+      const g = groups.get(i) || [];
+      const sum = g.reduce((a, x) => a + x.s.price, 0);
+      const h = g.length ? Math.max(4, Math.round((sum / maxDay) * 30)) : 0;
+      return `
+        <div class="cal-day ${i === 0 ? 'today' : ''} ${g.length ? '' : 'empty'}">
+          <p class="dow">${i === 0 ? 'Today' : dowNames[d.getDay()]}</p>
+          <p class="dnum">${d.getDate()}</p>
+          ${h ? `<div class="cal-bar" style="height:${h}px"></div>` : '<div style="height:5px"></div>'}
+          <p class="sum">${g.length ? money(sum, 0) : '—'}</p>
+          <p class="cnt">${g.length ? g.map(x => x.s.name.split(' ')[0]).join(', ') : 'clear'}</p>
+        </div>`;
+    }).join('');
+
+    // biggest hit
+    const big = charges.slice().sort((a, b) => b.s.price - a.s.price)[0];
+    const bigBox = document.getElementById('sideBig');
+    if (big) {
+      bigBox.innerHTML = `
+        <p class="nm">${big.s.name}</p>
+        <p class="amt">${money(big.s.price, 2)}</p>
+        <p class="dt">${monthNames[big.date.getMonth()]} ${big.date.getDate()} · in ${big.days} day${big.days === 1 ? '' : 's'}</p>`;
+    } else bigBox.innerHTML = '<p class="dt">Nothing scheduled.</p>';
+
+    // next 7 days
+    const soon = charges.filter(x => x.days <= 7).sort((a, b) => a.days - b.days);
+    const soonList = document.getElementById('sideSoon');
+    soonList.innerHTML = soon.length ? soon.map(x => `
+      <li><span>${x.s.name}<br/><small style="color:var(--txt-3)">in ${x.days} day${x.days === 1 ? '' : 's'}</small></span><b>${money(x.s.price)}</b></li>`
+    ).join('') : '<li><span>No charges this week.</span><b>$0.00</b></li>';
+  }
+
+  /* ── price creep ───────────────────────────────────────── */
+  function renderCreep() {
+    const list = document.getElementById('creepList');
+    if (!list) return;
+
+    const rows = SUBSCRIPTIONS
+      .filter(s => s.price > s.priceThen + 0.005)
+      .map(s => ({ s, delta: s.price - s.priceThen, pct: ((s.price - s.priceThen) / s.priceThen) * 100 }))
+      .sort((a, b) => b.delta - a.delta);
+
+    const totalMonthly = rows.reduce((a, r) =>
+      a + (r.s.cycle === 'annual' ? r.delta / 12 : r.delta), 0);
+    document.getElementById('creepTotal').textContent = money(totalMonthly, 2);
+
+    const maxNow = Math.max(...rows.map(r => r.s.price), 1);
+    list.innerHTML = rows.map(r => {
+      const thenW = (r.s.priceThen / maxNow) * 100;
+      const nowW = (r.s.price / maxNow) * 100;
+      return `
+      <div class="creep-row">
+        <div class="nm">${r.s.name}<small>Since ${r.s.signedUp.slice(0, 7)}</small></div>
+        <div class="creep-bars">
+          <div class="creep-bar then"><span class="trk"><span class="fill" style="width:${thenW}%"></span></span><span class="val">${money(r.s.priceThen)}</span></div>
+          <div class="creep-bar now"><span class="trk"><span class="fill" style="width:${nowW}%"></span></span><span class="val">${money(r.s.price)}</span></div>
+        </div>
+        <div class="creep-delta">+${money(r.delta)}<small>+${r.pct.toFixed(0)}% per charge</small></div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ── cancel advisor ────────────────────────────────────── */
+  function renderAdvisor() {
+    const list = document.getElementById('advisorList');
+    if (!list) return;
+
+    const ranked = SUBSCRIPTIONS.map(s => {
+      const c = classify(s);
+      const monthly = monthlyCost(s);
+      let score = monthly * 12;
+      if (s.usage === 'none') score += 220;
+      else if (s.usage === 'light') score += 90;
+      score += Math.min(s.lastUsed, 180) * 1.4;
+      if (c.dup) score += 160;
+      if (c.rose) score += Math.min(c.creepPct, 100) * 1.1;
+      if (s.usage === 'heavy') score -= 260;
+      if (c.verdict === 'keep') score -= 300;
+      return { s, c, monthly, score };
+    }).sort((a, b) => b.score - a.score);
+
+    const cutSet = ranked.filter(x => x.c.verdict === 'cancel');
+    const keepSet = ranked.filter(x => x.c.verdict === 'keep');
+    document.getElementById('advisorSummary').innerHTML = `
+      <div class="asum"><p class="n cut">${money(cutSet.reduce((a, x) => a + x.monthly * 12, 0), 0)}</p><p class="l">Cut candidates / yr</p></div>
+      <div class="asum"><p class="n keep">${money(keepSet.reduce((a, x) => a + x.monthly * 12, 0), 0)}</p><p class="l">Worth keeping / yr</p></div>`;
+
+    list.innerHTML = ranked.map((x, i) => {
+      const cut = isCut(x.s);
+      const reasons = [];
+      if (x.s.usage === 'none') reasons.push(`unused for ${x.s.lastUsed} days`);
+      if (x.c.dup) reasons.push('duplicates another service');
+      if (x.c.rose) reasons.push(`price up ${x.c.creepPct.toFixed(0)}%`);
+      if (x.s.usage === 'heavy') reasons.push('in daily use');
+      if (!reasons.length) reasons.push(x.s.note.toLowerCase());
+      return `
+      <li class="adv-item ${cut ? 'is-cut' : ''}">
+        <span class="adv-rank">${i + 1}</span>
+        <div class="adv-nm">${x.s.name}<small>${x.s.note}</small></div>
+        <div class="adv-reason">${reasons.join(' · ')}</div>
+        <div class="adv-cost">${money(x.monthly * 12, 0)}<small>per year</small></div>
+        <div class="adv-act">
+          <button class="adv-btn keep" data-keep="${x.s.id}">Keep</button>
+          <button class="adv-btn cut" data-cut="${x.s.id}">${cut ? 'Restore' : 'Cut'}</button>
+        </div>
+      </li>`;
+    }).join('');
+
+    list.querySelectorAll('[data-cut]').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.cut;
+      state.cut.has(id) ? state.cut.delete(id) : state.cut.add(id);
+      renderAll();
+    }));
+    list.querySelectorAll('[data-keep]').forEach(b => b.addEventListener('click', () => {
+      state.cut.delete(b.dataset.keep);
+      renderAll();
+    }));
+  }
+
+  /* ── master render ─────────────────────────────────────── */
+  function renderAll() {
+    renderKPIs();
+    renderSubs();
+    renderUpcoming();
+    renderCreep();
+    renderAdvisor();
+  }
+
+  /* ── wiring ────────────────────────────────────────────── */
+  function init() {
+    // tabs
+    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => { x.classList.remove('is-active'); x.setAttribute('aria-selected', 'false'); });
+      t.classList.add('is-active'); t.setAttribute('aria-selected', 'true');
+      document.querySelectorAll('.panel').forEach(p => p.classList.toggle('is-active', p.dataset.panel === t.dataset.tab));
+    }));
+
+    // filters
+    document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
+      document.querySelectorAll('.chip').forEach(x => x.classList.remove('is-active'));
+      c.classList.add('is-active');
+      state.filter = c.dataset.filter;
+      renderSubs();
+    }));
+
+    // annual toggle
+    const av = document.getElementById('annualView');
+    if (av) av.addEventListener('change', () => { state.annual = av.checked; renderSubs(); });
+
+    // reset
+    const rb = document.getElementById('resetBoard');
+    if (rb) rb.addEventListener('click', () => { state.cut.clear(); state.filter = 'all'; renderAll(); });
+
+    // pricing billing toggle
+    document.querySelectorAll('.bt-opt').forEach(b => b.addEventListener('click', () => {
+      document.querySelectorAll('.bt-opt').forEach(x => x.classList.remove('is-active'));
+      b.classList.add('is-active');
+      const annual = b.dataset.cycle === 'annual';
+      document.querySelectorAll('.price-card').forEach(card => {
+        const amt = card.querySelector('.amt');
+        const per = card.querySelector('.per');
+        if (!amt) return;
+        const val = annual ? amt.dataset.annual : amt.dataset.monthly;
+        if (val === '0') { amt.textContent = '$0'; per.textContent = 'forever'; return; }
+        amt.textContent = '$' + val;
+        per.textContent = annual ? '/year' : '/month';
+      });
+    }));
+
+    // nav burger
+    const burger = document.querySelector('.nav-burger');
+    const nav = document.getElementById('nav');
+    if (burger) burger.addEventListener('click', () => {
+      const open = nav.classList.toggle('open');
+      burger.setAttribute('aria-expanded', String(open));
+    });
+    document.querySelectorAll('.nav-links a').forEach(a => a.addEventListener('click', () => nav.classList.remove('open')));
+
+    // sticky nav shadow
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('is-stuck', window.scrollY > 24);
+    }, { passive: true });
+
+    // reveal on scroll
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target); } });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+    // crep bars animate in
+    const io2 = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('is-in'); io2.unobserve(e.target); } });
+    }, { threshold: 0.2 });
+    document.querySelectorAll('.creep-row').forEach(el => io2.observe(el));
+
+    renderTxns();
+    renderAll();
+  }
+
+  document.readyState === 'loading'
+    ? document.addEventListener('DOMContentLoaded', init)
+    : init();
+})();
