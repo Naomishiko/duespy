@@ -598,3 +598,15 @@ section{ padding:clamp(64px,8vw,116px) var(--pad); max-width:var(--maxw); margin
   .foot-cols{ grid-template-columns:1fr 1fr; }
   .ticker-track{ animation-duration:32s; }
 }
+
+/* ── no motion ──────────────────────────────────────────────
+   The page is meant to be read, not watched. Everything renders
+   in place: no load-in slide, no scrolling ticker, no pulsing. */
+*, *::before, *::after{
+  animation:none !important;
+  transition:none !important;
+}
+.reveal{ opacity:1 !important; transform:none !important; }
+.txn{ opacity:1 !important; transform:none !important; }
+.ticker-track{ animation:none !important; transform:none !important; }
+html{ scroll-behavior:auto !important; }
