@@ -549,6 +549,8 @@ section{ padding:clamp(64px,8vw,116px) var(--pad); max-width:var(--maxw); margin
 .reveal[data-delay="2"]{ transition-delay:.16s; }
 .reveal[data-delay="3"]{ transition-delay:.24s; }
 .reveal[data-delay="4"]{ transition-delay:.32s; }
+/* Hero is above the fold: show it immediately so it never slides on load. */
+.hero .reveal{ opacity:1; transform:none; transition:none; }
 @media (prefers-reduced-motion:reduce){
   *{ animation:none !important; transition-duration:.01ms !important; }
   .reveal{ opacity:1; transform:none; }
