@@ -37,7 +37,7 @@
      While this is empty the form validates the address and says so
      honestly instead of pretending the signup was recorded.
      ============================================================ */
-  const FORM_ENDPOINT = ''; // e.g. 'https://formspree.io/f/xxxxxxxx'
+  const FORM_ENDPOINT = 'https://formspree.io/f/mnpddqqa';
   /* ======================= END EDIT BLOCK ===================== */
 
   const TODAY = new Date();
