@@ -528,7 +528,6 @@ section{ padding:clamp(64px,8vw,116px) var(--pad); max-width:var(--maxw); margin
 .site-foot{ border-top:1.8px solid var(--rule); background:var(--paper-2); padding:clamp(44px,5.5vw,68px) var(--pad) 26px; }
 .foot-top{ max-width:1220px; margin:0 auto; display:grid; grid-template-columns:1.2fr 1.6fr; gap:52px; }
 .foot-brand p{ color:var(--ink-2); font-size:.9rem; margin-top:16px; max-width:38ch; }
-.foot-domain{ font-family:var(--ff-mono); color:var(--coral-deep) !important; font-size:.78rem !important; letter-spacing:.04em; font-weight:700; }
 .foot-cols{ display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }
 .foot-col{ display:flex; flex-direction:column; gap:10px; }
 .foot-col h4{ font-family:var(--ff-mono); font-size:.63rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); font-weight:700; margin-bottom:3px; }

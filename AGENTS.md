@@ -1,7 +1,7 @@
 # Duespy — repository notes
 
 ## What this is
-Marketing site + interactive product demo for **duespy.com**, a "subscription
+Marketing site + interactive product demo for **Duespy**, a "subscription
 detective": it finds recurring charges, forecasts upcoming ones, and advises
 what to cancel. Not affiliated with any other subscription-management product.
 
@@ -66,8 +66,9 @@ was removed. Consequences to keep in mind:
   should clear the nav height.
 
 ## Known open items
-- `duespy.com` is **not registered** (RDAP 404, DNS NXDOMAIN), so it cannot be
-  pointed at the site. The footer prints `duespy.com` as a placeholder.
+- No domain is owned yet. `duespy.com` is **not registered** (RDAP 404, DNS
+  NXDOMAIN) and the footer no longer prints any domain, so nothing advertises an
+  address the project does not control. Register one before adding it back.
 - Stripe is in test mode; going live needs the sandbox claimed and the four test
   Payment Links swapped for live ones.
 - No `CNAME` file: the site is served from the `naomishiko.github.io/duespy/`
