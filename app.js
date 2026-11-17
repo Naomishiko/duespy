@@ -14,8 +14,8 @@
      (Dashboard → Payment Links) when you are ready to take real
      money. Keys must match the plan + billing cycle exactly.
 
-     If a URL is left as "" the button falls back to the built-in
-     demo signup dialog instead of Stripe.
+     A button whose plan/cycle has no URL here is left as-is (it will
+     scroll to #pricing) rather than being sent to Stripe.
      ============================================================ */
   const STRIPE_LINKS = {
     'Detective|monthly': 'https://buy.stripe.com/test_4gM00igOU7Aoh04djt5gc00',
@@ -494,119 +494,20 @@
 
     renderTxns();
     renderAll();
-    initSignup();
+    syncCtas();
   }
 
-  /* ── Stripe CTA wiring ─────────────────────────────────── */
-  const ctaLinks = () => document.querySelectorAll('a[href^="#signup"], a[data-stripe]');
+  /* ── Stripe CTA wiring ───────────────────────────────────────── */
+  const ctaLinks = () => document.querySelectorAll('a[data-plan]');
 
   function syncCtas() {
     const cycle = document.querySelector('.bt-opt.is-active')?.dataset.cycle || 'monthly';
     ctaLinks().forEach(a => {
       const link = STRIPE_LINKS[`${a.dataset.plan}|${cycle}`];
-      if (link) {
-        a.href = link;
-        a.dataset.stripe = '1';
-        a.target = '_blank';
-        a.rel = 'noopener';
-      } else {
-        a.href = '#signup';
-        delete a.dataset.stripe;
-        a.removeAttribute('target');
-        a.removeAttribute('rel');
-      }
-    });
-  }
-
-  /* ── signup ────────────────────────────────────────────── */
-  function initSignup() {
-    const modal = document.getElementById('signup');
-    const form = document.getElementById('signupForm');
-    const done = document.getElementById('signupDone');
-    if (!modal || !form) return;
-
-    const fine = document.getElementById('signupFine');
-    const email = document.getElementById('signupEmail');
-    const doneTxt = document.getElementById('signupDoneTxt');
-    const prices = modal.querySelectorAll('.pick-price');
-    const lastTrigger = { el: null };
-
-    const pick = (name) => modal.querySelector(`input[name="${name}"]:checked`);
-    const isAnnual = () => pick('cycle').value === 'annual';
-
-    function syncPrices() {
-      const annual = isAnnual();
-      prices.forEach(p => {
-        p.textContent = annual ? `$${p.dataset.annual}/yr` : `$${p.dataset.monthly}/mo`;
-      });
-      const plan = pick('plan').value;
-      const sel = modal.querySelector(`input[name="plan"]:checked`).closest('.pick-opt').querySelector('.pick-price');
-      fine.textContent = `${plan} · ${sel.textContent} after the 14-day trial. Cancel anytime.`;
-    }
-
-    function open(plan) {
-      if (plan) {
-        const opt = modal.querySelector(`input[name="plan"][value="${plan}"]`);
-        if (opt) opt.checked = true;
-      }
-      const cyc = modal.querySelector('.bt-opt.is-active');
-      if (cyc) modal.querySelector(`input[name="cycle"][value="${cyc.dataset.cycle}"]`).checked = true;
-      form.hidden = false;
-      done.hidden = true;
-      modal.hidden = false;
-      document.body.classList.add('modal-open');
-      syncPrices();
-      email.focus();
-    }
-
-    function close() {
-      modal.hidden = true;
-      document.body.classList.remove('modal-open');
-      if (lastTrigger.el) lastTrigger.el.focus();
-    }
-
-    syncCtas();
-
-    document.querySelectorAll('a[href="#signup"], a[data-stripe]').forEach(a => {
-      a.addEventListener('click', (e) => {
-        if (a.dataset.stripe) return;  // let the browser follow href to Stripe
-        e.preventDefault();
-        lastTrigger.el = a;
-        open(a.dataset.plan);
-      });
-    });
-
-    const ff = document.querySelector('.finale-form');
-    if (ff) ff.addEventListener('submit', (e) => {
-      e.preventDefault();
-      lastTrigger.el = ff.querySelector('button');
-      open();
-    });
-
-    modal.querySelectorAll('input[name="plan"], input[name="cycle"]')
-      .forEach(r => r.addEventListener('change', syncPrices));
-
-    modal.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', close));
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !modal.hidden) close();
-    });
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const addr = email.value.trim();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr)) {
-        email.focus();
-        email.setAttribute('aria-invalid', 'true');
-        return;
-      }
-      email.removeAttribute('aria-invalid');
-      const plan = pick('plan').value;
-      const price = modal.querySelector(`input[name="plan"]:checked`)
-        .closest('.pick-opt').querySelector('.pick-price').textContent;
-      doneTxt.textContent =
-        `We've sent a confirmation to ${addr}. Your ${plan} trial starts now and bills at ${price} after 14 days.`;
-      form.hidden = true;
-      done.hidden = false;
+      if (!link) return;
+      a.href = link;
+      a.target = '_blank';
+      a.rel = 'noopener';
     });
   }
 
