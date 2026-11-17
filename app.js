@@ -6,6 +6,25 @@
 (() => {
   'use strict';
 
+  /* ============================================================
+     STRIPE CHECKOUT LINKS  ← EDIT THIS BLOCK ONLY
+     ------------------------------------------------------------
+     These are TEST links (Stripe sandbox). Replace each URL with
+     the matching LIVE Payment Link from your Stripe dashboard
+     (Dashboard → Payment Links) when you are ready to take real
+     money. Keys must match the plan + billing cycle exactly.
+
+     If a URL is left as "" the button falls back to the built-in
+     demo signup dialog instead of Stripe.
+     ============================================================ */
+  const STRIPE_LINKS = {
+    'Detective|monthly': 'https://buy.stripe.com/test_4gM00igOU7Aoh04djt5gc00',
+    'Detective|annual' : 'https://buy.stripe.com/test_6oU14mfKQaMA4di2EP5gc01',
+    'Precinct|monthly' : 'https://buy.stripe.com/test_fZu7sK0PWg6UfW03IT5gc02',
+    'Precinct|annual'  : 'https://buy.stripe.com/test_bJe7sKgOUg6UfW0gvF5gc03',
+  };
+  /* ======================= END EDIT BLOCK ===================== */
+
   const TODAY = new Date();
   TODAY.setHours(0, 0, 0, 0);
 
@@ -444,6 +463,7 @@
         amt.textContent = '$' + val;
         per.textContent = annual ? '/year' : '/month';
       });
+      if (typeof syncCtas === 'function') syncCtas();
     }));
 
     // nav burger
@@ -475,6 +495,27 @@
     renderTxns();
     renderAll();
     initSignup();
+  }
+
+  /* ── Stripe CTA wiring ─────────────────────────────────── */
+  const ctaLinks = () => document.querySelectorAll('a[href^="#signup"], a[data-stripe]');
+
+  function syncCtas() {
+    const cycle = document.querySelector('.bt-opt.is-active')?.dataset.cycle || 'monthly';
+    ctaLinks().forEach(a => {
+      const link = STRIPE_LINKS[`${a.dataset.plan}|${cycle}`];
+      if (link) {
+        a.href = link;
+        a.dataset.stripe = '1';
+        a.target = '_blank';
+        a.rel = 'noopener';
+      } else {
+        a.href = '#signup';
+        delete a.dataset.stripe;
+        a.removeAttribute('target');
+        a.removeAttribute('rel');
+      }
+    });
   }
 
   /* ── signup ────────────────────────────────────────────── */
@@ -524,8 +565,11 @@
       if (lastTrigger.el) lastTrigger.el.focus();
     }
 
-    document.querySelectorAll('a[href="#signup"]').forEach(a => {
+    syncCtas();
+
+    document.querySelectorAll('a[href="#signup"], a[data-stripe]').forEach(a => {
       a.addEventListener('click', (e) => {
+        if (a.dataset.stripe) return;  // let the browser follow href to Stripe
         e.preventDefault();
         lastTrigger.el = a;
         open(a.dataset.plan);
