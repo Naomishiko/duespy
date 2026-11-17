@@ -499,25 +499,31 @@
     const list = document.getElementById('advisorList');
     if (!list) return;
 
+    /* Ranking is verdict first, price second. Ranking by raw cost put the most
+       expensive service on top even when it was in active use, while services
+       that were genuinely unused sat below it. The verdict already encodes
+       usage, idleness and duplication, so it decides the tier; annual cost
+       orders within a tier. Kept services sink to the bottom. */
+    const TIER = { cancel: 0, review: 1, keep: 2 };
     const ranked = SUBSCRIPTIONS.map(s => {
       const c = classify(s);
       const monthly = monthlyCost(s);
-      let score = monthly * 12;
-      if (s.usage === 'none') score += 220;
-      else if (s.usage === 'light') score += 90;
-      score += Math.min(s.lastUsed, 180) * 1.4;
-      if (c.dup) score += 160;
-      if (c.rose) score += Math.min(c.creepPct, 100) * 1.1;
-      if (s.usage === 'heavy') score -= 260;
-      if (c.verdict === 'keep') score -= 300;
-      return { s, c, monthly, score };
-    }).sort((a, b) => b.score - a.score);
+      const kept = isKept(s);
+      const tier = kept ? 3 : TIER[c.verdict];
+      const score = monthly * 12;
+      return { s, c, monthly, score, kept, tier };
+    }).sort((a, b) => a.tier - b.tier || b.score - a.score);
 
-    const cutSet = ranked.filter(x => x.c.verdict === 'cancel' && !isKept(x.s));
-    const keepSet = ranked.filter(x => x.c.verdict === 'keep' || isKept(x.s));
+    /* Mutually exclusive buckets that together account for all spend. Review
+       used to fall in neither, so over half the total was invisible. */
+    const bucket = (pred) => ranked.filter(pred).reduce((a, x) => a + x.monthly * 12, 0);
+    const cutSum = bucket(x => !x.kept && x.c.verdict === 'cancel');
+    const revSum = bucket(x => !x.kept && x.c.verdict === 'review');
+    const keepSum = bucket(x => x.kept || x.c.verdict === 'keep');
     document.getElementById('advisorSummary').innerHTML = `
-      <div class="asum"><p class="n cut">${money(cutSet.reduce((a, x) => a + x.monthly * 12, 0), 0)}</p><p class="l">Cut candidates / yr</p></div>
-      <div class="asum"><p class="n keep">${money(keepSet.reduce((a, x) => a + x.monthly * 12, 0), 0)}</p><p class="l">Worth keeping / yr</p></div>`;
+      <div class="asum"><p class="n cut">${money(cutSum, 0)}</p><p class="l">Cut candidates / yr</p></div>
+      <div class="asum"><p class="n review">${money(revSum, 0)}</p><p class="l">Worth a look / yr</p></div>
+      <div class="asum"><p class="n keep">${money(keepSum, 0)}</p><p class="l">Worth keeping / yr</p></div>`;
 
     list.innerHTML = ranked.map((x, i) => {
       const cut = isCut(x.s);
@@ -531,7 +537,9 @@
       return `
       <li class="adv-item ${cut ? 'is-cut' : ''}${kept ? ' is-kept' : ''}">
         <span class="adv-rank">${i + 1}</span>
-        <div class="adv-nm">${esc(x.s.name)}<small>${esc(x.s.note)}</small></div>
+        <div class="adv-nm">${esc(x.s.name)}<small>${esc(x.s.note)}</small>
+          <span class="stamp ${x.c.verdict}">${x.c.verdict === 'keep' ? 'Keep' : x.c.verdict === 'review' ? 'Review' : 'Cut'}</span>
+        </div>
         <div class="adv-reason">${reasons.join(' · ')}</div>
         <div class="adv-cost">${money(x.monthly * 12, 0)}<small>per year</small></div>
         <div class="adv-act">

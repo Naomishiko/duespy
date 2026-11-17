@@ -392,10 +392,11 @@ section{ padding:clamp(64px,8vw,116px) var(--pad); max-width:var(--maxw); margin
 .advisor-head{ display:flex; justify-content:space-between; gap:30px; align-items:flex-end; flex-wrap:wrap; margin-bottom:24px; }
 .advisor-head h3{ font-size:1.28rem; }
 .advisor-head p{ color:var(--ink-2); font-size:.88rem; margin-top:8px; max-width:52ch; }
-.advisor-summary{ display:flex; gap:20px; }
+.advisor-summary{ display:flex; gap:20px; flex-wrap:wrap; justify-content:flex-end; }
 .asum{ text-align:right; }
 .asum .n{ font-family:var(--ff-display); font-size:1.85rem; font-weight:800; letter-spacing:-.04em; }
 .asum .n.keep{ color:var(--mint); }
+.asum .n.review{ color:#b26a00; }
 .asum .n.cut{ color:var(--coral-deep); }
 .asum .l{ font-family:var(--ff-mono); font-size:.6rem; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); }
 .advisor-list{ list-style:none; margin:0; padding:0; display:grid; gap:10px; }
@@ -411,6 +412,7 @@ section{ padding:clamp(64px,8vw,116px) var(--pad); max-width:var(--maxw); margin
 .adv-item:nth-child(1) .adv-rank{ color:var(--coral-deep); }
 .adv-nm{ font-weight:700; }
 .adv-nm small{ display:block; font-family:var(--ff-mono); font-size:.63rem; color:var(--ink-3); letter-spacing:.02em; margin-top:3px; font-weight:400; }
+.adv-nm .stamp{ display:inline-block; margin-top:7px; }
 .adv-reason{ font-size:.83rem; color:var(--ink-2); }
 .adv-cost{ font-family:var(--ff-display); font-size:1.12rem; font-weight:800; text-align:right; font-variant-numeric:tabular-nums; letter-spacing:-.03em; }
 .adv-cost small{ display:block; font-family:var(--ff-mono); font-size:.58rem; color:var(--ink-3); font-weight:400; letter-spacing:.05em; }
@@ -581,7 +583,7 @@ body.is-locked{ overflow:hidden; }
   position:absolute; inset:-40% -10% -40% -10%;
   background:repeating-radial-gradient(circle at 60% 50%, transparent 0 30px, rgba(200,255,46,.10) 30px 32px);
 }
-.stamp{
+.stamp-seal{
   font-family:var(--ff-display); font-weight:800; text-align:center;
   font-size:clamp(1.5rem,3.2vw,2.5rem); line-height:1; letter-spacing:-.02em;
   color:var(--lime); border:4px double var(--lime); border-radius:var(--r-2); padding:16px 24px;
