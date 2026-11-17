@@ -163,7 +163,6 @@ p{ margin:0; }
   position:relative; border-radius:var(--r-2); overflow:hidden;
   background:var(--card); border:1.8px solid var(--rule);
   box-shadow:var(--shadow-lg);
-  transform:rotate(-.8deg);
 }
 .dossier-head{
   display:flex; justify-content:space-between; align-items:flex-start; gap:16px;
@@ -175,7 +174,7 @@ p{ margin:0; }
 .pulse{ width:7px; height:7px; border-radius:50%; background:var(--mint); animation:pulse 1.6s infinite; }
 @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.25; } }
 
-.txn-list{ list-style:none; margin:0; padding:8px 12px; min-height:326px; }
+.txn-list{ list-style:none; margin:0; padding:8px 12px; min-height:281px; }
 .txn{
   display:grid; grid-template-columns:22px 1fr auto; align-items:center; gap:12px;
   padding:11px 12px; border-radius:var(--r); font-family:var(--ff-mono); font-size:.76rem;
@@ -206,11 +205,10 @@ p{ margin:0; }
 .dossier-note{ margin-left:auto; text-align:right; font-family:var(--ff-mono); font-size:.64rem; color:var(--ink-3); max-width:22ch; }
 
 /* ticker */
-.ticker{ margin-top:clamp(44px,6vw,76px); border-top:1.8px solid var(--rule); border-bottom:1.8px solid var(--rule); overflow:hidden; padding:11px 0; background:var(--ink); }
-.ticker-track{ display:flex; gap:26px; white-space:nowrap; animation:slide 48s linear infinite; }
+.ticker{ margin-top:clamp(44px,6vw,76px); border-top:1.8px solid var(--rule); border-bottom:1.8px solid var(--rule); padding:11px 0; background:var(--ink); }
+.ticker-track{ display:flex; flex-wrap:wrap; justify-content:center; gap:10px 26px; }
 .ticker-track span{ font-family:var(--ff-mono); font-size:.7rem; letter-spacing:-.01em; color:var(--paper); }
 .ticker-track i{ color:var(--lime); font-style:normal; font-size:.55rem; }
-@keyframes slide{ to{ transform:translateX(-50%); } }
 
 /* ── section scaffolding ────────────────────────────────── */
 section{ padding:clamp(64px,8vw,116px) var(--pad); max-width:var(--maxw); margin:0 auto; }

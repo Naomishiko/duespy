@@ -135,7 +135,6 @@
     { merch:'ADOBE *888-…',          meta:'San Jose CA',         amt:59.99, rec:true,  tag:'Recurring · monthly · increased in March' },
     { merch:'SHELL OIL 57483',       meta:'Card ···4417',        amt:54.02, rec:false },
     { merch:'APPLE.COM/BILL',        meta:'Cupertino CA',        amt:9.99,  rec:true,  tag:'Recurring · monthly · duplicate of Google One' },
-    { merch:'DUOLINGO.COM',          meta:'Pittsburgh PA',       amt:9.99,  rec:true,  tag:'Recurring · monthly · idle 71 days' },
     { merch:'AMZN Mktp US*2H4L9',    meta:'Card ···4417',        amt:38.77, rec:false },
   ];
 
