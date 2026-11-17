@@ -35,9 +35,6 @@
     { id:'disney',  name:'Disney+',        cat:'Streaming',    brand:'#113ccf', letter:'D',
       price:13.99, cycle:'monthly', priceThen:7.99,  signedUp:'2020-11-12', day:6,
       lastUsed:41,  usage:'none',        dupGroup:null,    note:'Used for one season, then forgotten.' },
-    { id:'duolingo',name:'Duolingo Max',   cat:'Learning',     brand:'#58cc02', letter:'L',
-      price:9.99,  cycle:'monthly', priceThen:6.99,  signedUp:'2023-04-01', day:18,
-      lastUsed:71,  usage:'none',        dupGroup:null,    note:'71 days since the last lesson.' },
     { id:'nyt',     name:'NYT All Access', cat:'News',         brand:'#121212', letter:'T',
       price:17.00, cycle:'monthly', priceThen:6.25,  signedUp:'2022-08-30', day:11,
       lastUsed:3,   usage:'moderate',    dupGroup:null,    note:'Intro rate expired; tripled in price.' },
@@ -477,6 +474,96 @@
 
     renderTxns();
     renderAll();
+    initSignup();
+  }
+
+  /* ── signup ────────────────────────────────────────────── */
+  function initSignup() {
+    const modal = document.getElementById('signup');
+    const form = document.getElementById('signupForm');
+    const done = document.getElementById('signupDone');
+    if (!modal || !form) return;
+
+    const fine = document.getElementById('signupFine');
+    const email = document.getElementById('signupEmail');
+    const doneTxt = document.getElementById('signupDoneTxt');
+    const prices = modal.querySelectorAll('.pick-price');
+    const lastTrigger = { el: null };
+
+    const pick = (name) => modal.querySelector(`input[name="${name}"]:checked`);
+    const isAnnual = () => pick('cycle').value === 'annual';
+
+    function syncPrices() {
+      const annual = isAnnual();
+      prices.forEach(p => {
+        p.textContent = annual ? `$${p.dataset.annual}/yr` : `$${p.dataset.monthly}/mo`;
+      });
+      const plan = pick('plan').value;
+      const sel = modal.querySelector(`input[name="plan"]:checked`).closest('.pick-opt').querySelector('.pick-price');
+      fine.textContent = `${plan} · ${sel.textContent} after the 14-day trial. Cancel anytime.`;
+    }
+
+    function open(plan) {
+      if (plan) {
+        const opt = modal.querySelector(`input[name="plan"][value="${plan}"]`);
+        if (opt) opt.checked = true;
+      }
+      const cyc = modal.querySelector('.bt-opt.is-active');
+      if (cyc) modal.querySelector(`input[name="cycle"][value="${cyc.dataset.cycle}"]`).checked = true;
+      form.hidden = false;
+      done.hidden = true;
+      modal.hidden = false;
+      document.body.classList.add('modal-open');
+      syncPrices();
+      email.focus();
+    }
+
+    function close() {
+      modal.hidden = true;
+      document.body.classList.remove('modal-open');
+      if (lastTrigger.el) lastTrigger.el.focus();
+    }
+
+    document.querySelectorAll('a[href="#signup"]').forEach(a => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        lastTrigger.el = a;
+        open(a.dataset.plan);
+      });
+    });
+
+    const ff = document.querySelector('.finale-form');
+    if (ff) ff.addEventListener('submit', (e) => {
+      e.preventDefault();
+      lastTrigger.el = ff.querySelector('button');
+      open();
+    });
+
+    modal.querySelectorAll('input[name="plan"], input[name="cycle"]')
+      .forEach(r => r.addEventListener('change', syncPrices));
+
+    modal.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', close));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !modal.hidden) close();
+    });
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const addr = email.value.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr)) {
+        email.focus();
+        email.setAttribute('aria-invalid', 'true');
+        return;
+      }
+      email.removeAttribute('aria-invalid');
+      const plan = pick('plan').value;
+      const price = modal.querySelector(`input[name="plan"]:checked`)
+        .closest('.pick-opt').querySelector('.pick-price').textContent;
+      doneTxt.textContent =
+        `We've sent a confirmation to ${addr}. Your ${plan} trial starts now and bills at ${price} after 14 days.`;
+      form.hidden = true;
+      done.hidden = false;
+    });
   }
 
   document.readyState === 'loading'

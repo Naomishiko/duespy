@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Space+Mono:wght@400;700&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css?v=5" />
+<link rel="stylesheet" href="styles.css?v=7" />
 </head>
 <body>
 <div class="grain" aria-hidden="true"></div>
@@ -338,7 +338,7 @@
           <li>Renewal reminders 3 days ahead</li>
           <li>Household mode, up to 4 people</li>
         </ul>
-        <a class="btn btn-solid btn-block" href="#top">Start 14-day trial<span class="dot"></span></a>
+        <a class="btn btn-solid btn-block" href="#signup" data-plan="Detective">Start 14-day trial<span class="dot"></span></a>
         <p class="price-fine">No card required for the first 14 days.</p>
       </article>
 
@@ -353,7 +353,7 @@
           <li>Exportable spend ledger (CSV)</li>
           <li>Priority human support</li>
         </ul>
-        <a class="btn btn-ghost btn-block" href="#top">Choose Precinct</a>
+        <a class="btn btn-ghost btn-block" href="#signup" data-plan="Precinct">Choose Precinct</a>
       </article>
     </div>
   </section>
@@ -457,6 +457,69 @@
   </div>
 </footer>
 
-<script src="app.js?v=5"></script>
+<!-- ───────────────────────────── SIGNUP ───────────────────────────── -->
+<div class="modal" id="signup" role="dialog" aria-modal="true" aria-labelledby="signupTitle" hidden>
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close" data-close>&times;</button>
+
+    <form class="signup-form" id="signupForm" novalidate>
+      <p class="modal-kicker">Case intake</p>
+      <h2 id="signupTitle">Open your case file.</h2>
+      <p class="modal-lede">14 days free, no card needed. We email you the moment your first scan finishes.</p>
+
+      <label class="field">
+        <span class="field-lbl">Email</span>
+        <input type="email" id="signupEmail" name="email" placeholder="you@email.com" autocomplete="email" required />
+      </label>
+
+      <div class="field">
+        <span class="field-lbl">Plan</span>
+        <div class="pick">
+          <label class="pick-opt">
+            <input type="radio" name="plan" value="Detective" checked />
+            <span class="pick-body">
+              <span class="pick-name">Detective</span>
+              <span class="pick-price" data-monthly="6" data-annual="43">$6/mo</span>
+            </span>
+          </label>
+          <label class="pick-opt">
+            <input type="radio" name="plan" value="Precinct" />
+            <span class="pick-body">
+              <span class="pick-name">Precinct</span>
+              <span class="pick-price" data-monthly="14" data-annual="99">$14/mo</span>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field-lbl">Billing</span>
+        <div class="pick">
+          <label class="pick-opt">
+            <input type="radio" name="cycle" value="monthly" checked />
+            <span class="pick-body"><span class="pick-name">Monthly</span></span>
+          </label>
+          <label class="pick-opt">
+            <input type="radio" name="cycle" value="annual" />
+            <span class="pick-body"><span class="pick-name">Annual <b>save 40%</b></span></span>
+          </label>
+        </div>
+      </div>
+
+      <button class="btn btn-solid btn-block" type="submit">Start the search<span class="dot"></span></button>
+      <p class="modal-fine" id="signupFine"></p>
+    </form>
+
+    <div class="signup-done" id="signupDone" hidden>
+      <div class="signup-stamp">Filed</div>
+      <h3>Case opened.</h3>
+      <p id="signupDoneTxt"></p>
+      <button class="btn btn-ghost btn-block" type="button" data-close>Done</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js?v=7"></script>
 </body>
 </html>
