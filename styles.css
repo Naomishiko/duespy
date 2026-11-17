@@ -525,8 +525,6 @@ section{ padding:clamp(64px,8vw,116px) var(--pad); max-width:var(--maxw); margin
 .finale-status{ font-size:.8rem; margin-top:12px; min-height:1.2em; }
 .finale-status.ok{ color:var(--lime); }
 .finale-status.err{ color:var(--coral); }
-.finale-fine a{ color:inherit; text-decoration:underline; text-underline-offset:2px; }
-.finale-fine{ font-size:.76rem; color:rgba(244,241,232,.5); margin-top:13px; }
 .finale-art{ position:relative; height:100%; min-height:230px; display:grid; place-items:center; }
 .finale-rings{
   position:absolute; inset:-40% -10% -40% -10%;
