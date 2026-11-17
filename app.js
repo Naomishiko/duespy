@@ -203,7 +203,7 @@
       .filter(x => x.days <= 30);
 
     const save = active
-      .filter(s => classify(s).verdict === 'cancel')
+      .filter(s => classify(s).verdict === 'cancel' && !isKept(s))
       .reduce((a, s) => a + monthlyCost(s) * 12, 0);
 
     const set = (sel, txt) => { const el = document.querySelector(sel); if (el) el.textContent = txt; };
@@ -214,7 +214,9 @@
     set('#kpiSave', money(save, 0));
     set('#kpiSaveMeta', state.cut.size
       ? `${state.cut.size} marked to cut`
-      : 'from flagged subscriptions');
+      : state.kept.size
+        ? `${state.kept.size} kept off the list`
+        : 'from flagged subscriptions');
 
     const [mEl, yEl] = document.querySelectorAll('.kpi .kpi-val[data-count]');
     if (mEl) mEl.textContent = money(perMonth, 2);
@@ -434,8 +436,8 @@
       return { s, c, monthly, score };
     }).sort((a, b) => b.score - a.score);
 
-    const cutSet = ranked.filter(x => x.c.verdict === 'cancel');
-    const keepSet = ranked.filter(x => x.c.verdict === 'keep');
+    const cutSet = ranked.filter(x => x.c.verdict === 'cancel' && !isKept(x.s));
+    const keepSet = ranked.filter(x => x.c.verdict === 'keep' || isKept(x.s));
     document.getElementById('advisorSummary').innerHTML = `
       <div class="asum"><p class="n cut">${money(cutSet.reduce((a, x) => a + x.monthly * 12, 0), 0)}</p><p class="l">Cut candidates / yr</p></div>
       <div class="asum"><p class="n keep">${money(keepSet.reduce((a, x) => a + x.monthly * 12, 0), 0)}</p><p class="l">Worth keeping / yr</p></div>`;
