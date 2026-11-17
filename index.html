@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Space+Mono:wght@400;700&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css?v=20" />
+<link rel="stylesheet" href="styles.css?v=22" />
 </head>
 <body>
 <div class="grain" aria-hidden="true"></div>
@@ -147,6 +147,9 @@
           <button class="tab" role="tab" aria-selected="false" data-tab="advisor">Cancel advisor</button>
         </div>
         <div class="board-tools" id="boardTools">
+          <button class="btn btn-add" id="addSubBtn" aria-haspopup="dialog">
+            <span class="plus" aria-hidden="true">+</span> Add a subscription
+          </button>
           <label class="switch">
             <input type="checkbox" id="annualView" />
             <span class="switch-track"><span class="switch-thumb"></span></span>
@@ -220,6 +223,77 @@
       </div>
     </div>
   </section>
+
+  <!-- Add-subscription dialog -->
+  <div class="modal-scrim" id="addScrim" hidden></div>
+  <div class="modal" id="addModal" role="dialog" aria-modal="true" aria-labelledby="addTitle" hidden>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="addTitle">Add a subscription</h3>
+        <button class="modal-x" id="addClose" aria-label="Close">&times;</button>
+      </div>
+      <p class="modal-sub">Banks miss things. Add anything the search didn't catch and it joins the board.</p>
+      <form id="addForm" novalidate>
+        <div class="field">
+          <label for="fName">Service name</label>
+          <input type="text" id="fName" name="name" maxlength="40" placeholder="e.g. Amazon Prime" autocomplete="off" required />
+          <p class="field-err" id="errName" hidden>Give it a name.</p>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="fPrice">Amount</label>
+            <input type="number" id="fPrice" name="price" min="0.01" max="100000" step="0.01" inputmode="decimal" placeholder="9.99" required />
+            <p class="field-err" id="errPrice" hidden>Enter an amount above zero.</p>
+          </div>
+          <div class="field">
+            <label for="fCycle">Billing</label>
+            <select id="fCycle" name="cycle">
+              <option value="monthly">Monthly</option>
+              <option value="annual">Yearly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="weekly">Weekly</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="fCat">Category</label>
+            <select id="fCat" name="cat">
+              <option>Streaming</option>
+              <option>Music</option>
+              <option>Creative</option>
+              <option>Cloud storage</option>
+              <option>News</option>
+              <option>Shopping</option>
+              <option>Productivity</option>
+              <option>Fitness</option>
+              <option>Audio</option>
+              <option>Gaming</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="fDay">Next charge date</label>
+            <input type="date" id="fDay" name="day" required />
+            <p class="field-err" id="errDay" hidden>Pick the next charge date.</p>
+          </div>
+        </div>
+        <div class="field">
+          <label for="fUse">How much do you use it?</label>
+          <select id="fUse" name="usage">
+            <option value="moderate">Sometimes</option>
+            <option value="heavy">Most days</option>
+            <option value="light">Rarely</option>
+            <option value="none">Barely, if ever</option>
+          </select>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-ghost" id="addCancel">Cancel</button>
+          <button type="submit" class="btn btn-solid" id="addSave">Add to the board</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- ───────────────────────────── METHOD ───────────────────────────── -->
   <section class="method" id="method">
@@ -453,6 +527,6 @@
   </div>
 </footer>
 
-<script src="app.js?v=20"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

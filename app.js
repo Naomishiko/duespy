@@ -43,6 +43,13 @@
   const TODAY = new Date();
   TODAY.setHours(0, 0, 0, 0);
 
+  /* Visitor-supplied text is interpolated into innerHTML all over the board,
+     so escape it. Anything rendered from a subscription field goes through
+     this first. */
+  const esc = (v) => String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
   const money = (n, dec = 2) =>
     '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 
@@ -50,7 +57,7 @@
   const dowNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
   /* ── the case file ─────────────────────────────────────── */
-  const SUBSCRIPTIONS = [
+  const SEED = [
     { id:'netflix', name:'Netflix',        cat:'Streaming',    brand:'#e50914', letter:'N',
       price:15.49, cycle:'monthly', priceThen:10.99, signedUp:'2019-03-11', day:14,
       lastUsed:88,  usage:'none',        dupGroup:null,    note:'No episode finished in 14 months.' },
@@ -91,6 +98,71 @@
       price:11.99, cycle:'monthly', priceThen:9.99,  signedUp:'2019-10-22', day:8,
       lastUsed:120, usage:'none',        dupGroup:'cloud', note:'Third cloud drive. Overlaps.' },
   ];
+
+  /* SUBSCRIPTIONS is the working list: seed entries first, visitor additions after. */
+  const SUBSCRIPTIONS = [];
+
+  /* ── visitor-added subscriptions ───────────────────────────
+     The demo list above is the seed. Anything the visitor adds lives
+     here, is tagged custom, and is mirrored into localStorage so it
+     survives a reload. Only these entries are ever removed.          */
+  const STORE_KEY = 'duespy.custom.v1';
+
+  function readCustom() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  }
+
+  function writeCustom() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(SUBSCRIPTIONS.filter(s => s.custom)));
+    } catch (e) { /* private mode or quota - the session still works */ }
+  }
+
+  /* Rebuild the list as seed + saved, with derived fields filled in so a
+     saved entry is indistinguishable from a seeded one downstream. */
+  function hydrate() {
+    SUBSCRIPTIONS.length = 0;
+    SEED.forEach(s => { s.custom = false; SUBSCRIPTIONS.push(s); });
+    readCustom().forEach(r => {
+      const s = normalize(r);
+      if (s) SUBSCRIPTIONS.push(s);
+    });
+  }
+
+  const CAT_BRANDS = {
+    'Streaming':'#113ccf', 'Music':'#1db954', 'Creative':'#ff0000',
+    'Cloud storage':'#3b82f6', 'News':'#121212', 'Shopping':'#ff9900',
+    'Productivity':'#7a4dff', 'Fitness':'#df1c2f', 'Audio':'#f8991c',
+    'Gaming':'#8b5cf6', 'Other':'#6f6d5f',
+  };
+
+  /* Turn a stored record into a full subscription, or null if unusable. */
+  function normalize(r) {
+    if (!r || typeof r !== 'object') return null;
+    const price = Number(r.price);
+    // Strip anything tag-like as well as escaping at render time; a name is
+    // never legitimately markup.
+    const name = String(r.name || '').replace(/[<>]/g, '').trim().slice(0, 40);
+    const cycle = ['monthly', 'annual', 'quarterly', 'weekly'].includes(r.cycle) ? r.cycle : 'monthly';
+    const cat = CAT_BRANDS[r.cat] ? r.cat : 'Other';
+    if (!name || !isFinite(price) || price <= 0) return null;
+    const day = Math.min(Math.max(parseInt(r.day, 10) || 1, 1), 31);
+    return {
+      id: String(r.id || '').slice(0, 40) || 'c' + Date.now().toString(36),
+      name, cat, cycle, price,
+      brand: CAT_BRANDS[cat], letter: name.charAt(0).toUpperCase(),
+      priceThen: price, signedUp: '', day,
+      lastUsed: 0,
+      usage: ['heavy', 'moderate', 'light', 'none'].includes(r.usage) ? r.usage : 'moderate',
+      dupGroup: null, note: 'Added by you.',
+      custom: true,
+    };
+  }
 
   const CYCLE_DAYS = { monthly: 30.44, quarterly: 91.31, annual: 365.25, weekly: 7 };
 
@@ -265,10 +337,11 @@
 
       return `
       <article class="sub-card ${cut ? 'is-cut' : ''}" data-id="${s.id}">
+        ${s.custom ? '<span class="sub-custom">Added by you</span>' : ''}
         <div class="sub-top">
           <span class="sub-logo" style="--brand:${s.brand}">${s.letter}</span>
           <div>
-            <h4 class="sub-name">${s.name}</h4>
+            <h4 class="sub-name">${esc(s.name)}</h4>
             <p class="sub-cat">${s.cat}</p>
           </div>
           <div class="sub-price">
@@ -283,11 +356,15 @@
         <div class="sub-foot">
           <span class="sub-next">Next charge <b>${monthNames[next.getMonth()]} ${next.getDate()}</b> · in ${nd} day${nd === 1 ? '' : 's'}</span>
           <button class="sub-act ${cut ? 'restore' : ''}" data-toggle="${s.id}">${cut ? 'Restore' : 'Mark to cut'}</button>
+          ${s.custom ? `<button class="sub-del" data-del="${s.id}" aria-label="Remove ${esc(s.name)}">Remove</button>` : ''}
         </div>
       </article>`;
     }).join('');
 
     document.getElementById('subEmpty').hidden = shown.length > 0;
+    grid.querySelectorAll('[data-del]').forEach(btn => {
+      btn.addEventListener('click', () => removeSub(btn.dataset.del));
+    });
     grid.querySelectorAll('[data-toggle]').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.dataset.toggle;
@@ -333,7 +410,7 @@
           <p class="dnum">${d.getDate()}</p>
           ${h ? `<div class="cal-bar" style="height:${h}px"></div>` : '<div style="height:5px"></div>'}
           <p class="sum">${g.length ? money(sum, 0) : '—'}</p>
-          <p class="cnt">${g.length ? g.map(x => x.s.name.split(' ')[0]).join(', ') : 'clear'}</p>
+          <p class="cnt">${g.length ? g.map(x => esc(x.s.name.split(' ')[0])).join(', ') : 'clear'}</p>
         </div>`;
     }).join('');
 
@@ -364,7 +441,7 @@
         } else {
           const tot = g.reduce((a, x) => a + x.s.price, 0);
           detail.innerHTML = `<p class="cd-head">${head} · ${g.length} charge${g.length === 1 ? '' : 's'} · ${money(tot)}</p>
-            <ul class="cd-list">${g.map(x => `<li><span>${x.s.name}</span><b>${money(x.s.price)}</b></li>`).join('')}</ul>`;
+            <ul class="cd-list">${g.map(x => `<li><span>${esc(x.s.name)}</span><b>${money(x.s.price)}</b></li>`).join('')}</ul>`;
         }
       }
     }
@@ -374,7 +451,7 @@
     const bigBox = document.getElementById('sideBig');
     if (big) {
       bigBox.innerHTML = `
-        <p class="nm">${big.s.name}</p>
+        <p class="nm">${esc(big.s.name)}</p>
         <p class="amt">${money(big.s.price, 2)}</p>
         <p class="dt">${monthNames[big.date.getMonth()]} ${big.date.getDate()} · in ${big.days} day${big.days === 1 ? '' : 's'}</p>`;
     } else bigBox.innerHTML = '<p class="dt">Nothing scheduled.</p>';
@@ -383,7 +460,7 @@
     const soon = charges.filter(x => x.days <= 7).sort((a, b) => a.days - b.days);
     const soonList = document.getElementById('sideSoon');
     soonList.innerHTML = soon.length ? soon.map(x => `
-      <li><span>${x.s.name}<br/><small style="color:var(--txt-3)">in ${x.days} day${x.days === 1 ? '' : 's'}</small></span><b>${money(x.s.price)}</b></li>`
+      <li><span>${esc(x.s.name)}<br/><small style="color:var(--txt-3)">in ${x.days} day${x.days === 1 ? '' : 's'}</small></span><b>${money(x.s.price)}</b></li>`
     ).join('') : '<li><span>No charges this week.</span><b>$0.00</b></li>';
   }
 
@@ -407,7 +484,7 @@
       const nowW = (r.s.price / maxNow) * 100;
       return `
       <div class="creep-row">
-        <div class="nm">${r.s.name}<small>Since ${r.s.signedUp.slice(0, 7)}</small></div>
+        <div class="nm">${esc(r.s.name)}<small>Since ${r.s.signedUp.slice(0, 7)}</small></div>
         <div class="creep-bars">
           <div class="creep-bar then"><span class="trk"><span class="fill" style="width:${thenW}%"></span></span><span class="val">${money(r.s.priceThen)}</span></div>
           <div class="creep-bar now"><span class="trk"><span class="fill" style="width:${nowW}%"></span></span><span class="val">${money(r.s.price)}</span></div>
@@ -454,7 +531,7 @@
       return `
       <li class="adv-item ${cut ? 'is-cut' : ''}${kept ? ' is-kept' : ''}">
         <span class="adv-rank">${i + 1}</span>
-        <div class="adv-nm">${x.s.name}<small>${x.s.note}</small></div>
+        <div class="adv-nm">${esc(x.s.name)}<small>${esc(x.s.note)}</small></div>
         <div class="adv-reason">${reasons.join(' · ')}</div>
         <div class="adv-cost">${money(x.monthly * 12, 0)}<small>per year</small></div>
         <div class="adv-act">
@@ -476,6 +553,132 @@
       state.kept.has(id) ? state.kept.delete(id) : state.kept.add(id);
       renderAll();
     }));
+  }
+
+  /* ── add / remove visitor subscriptions ────────────────── */
+  function addSub(rec) {
+    const s = normalize(rec);
+    if (!s) return null;
+    s.id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    SUBSCRIPTIONS.push(s);
+    writeCustom();
+    renderAll();
+    return s;
+  }
+
+  function removeSub(id) {
+    const i = SUBSCRIPTIONS.findIndex(s => s.id === id && s.custom);
+    if (i === -1) return;
+    SUBSCRIPTIONS.splice(i, 1);
+    state.cut.delete(id);
+    state.kept.delete(id);
+    writeCustom();
+    renderAll();
+  }
+
+  function openAdd() {
+    const modal = document.getElementById('addModal');
+    const scrim = document.getElementById('addScrim');
+    if (!modal) return;
+    const form = document.getElementById('addForm');
+    form.reset();
+    document.querySelectorAll('#addForm .is-bad').forEach(el => el.classList.remove('is-bad'));
+    document.querySelectorAll('#addForm .field-err').forEach(el => { el.hidden = true; });
+    // Default the charge date to one month out - the common case. Built from
+    // local parts because toISOString() would shift the day in any timezone
+    // ahead of UTC.
+    const d = new Date(TODAY);
+    d.setMonth(d.getMonth() + 1);
+    const pad = (n) => String(n).padStart(2, '0');
+    document.getElementById('fDay').value =
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    modal.hidden = false;
+    scrim.hidden = false;
+    document.body.classList.add('is-locked');
+    document.getElementById('addSubBtn')?.classList.add('is-on');
+    setTimeout(() => document.getElementById('fName')?.focus(), 30);
+  }
+
+  function closeAdd() {
+    const modal = document.getElementById('addModal');
+    if (!modal) return;
+    modal.hidden = true;
+    document.getElementById('addScrim').hidden = true;
+    document.body.classList.remove('is-locked');
+    document.getElementById('addSubBtn')?.classList.remove('is-on');
+    document.getElementById('addSubBtn')?.focus();
+  }
+
+  /* Returns a record, or null after flagging the offending fields. */
+  function readAddForm() {
+    const nameEl = document.getElementById('fName');
+    const priceEl = document.getElementById('fPrice');
+    const dayEl = document.getElementById('fDay');
+    const name = nameEl.value.trim();
+    const price = Number(priceEl.value);
+    const dayVal = dayEl.value;
+
+    const bad = (el, errId, isBad) => {
+      el.classList.toggle('is-bad', isBad);
+      const e = document.getElementById(errId);
+      if (e) e.hidden = !isBad;
+      return isBad;
+    };
+    const nameBad = bad(nameEl, 'errName', !name);
+    const priceBad = bad(priceEl, 'errPrice', !isFinite(price) || price <= 0);
+    let day = 1;
+    const dayBad = bad(dayEl, 'errDay', !dayVal);
+    if (!dayBad) {
+      const picked = new Date(dayVal + 'T00:00:00');
+      if (isNaN(picked.getTime())) {
+        bad(dayEl, 'errDay', true);
+        return null;
+      }
+      day = picked.getDate();
+    }
+    if (nameBad || priceBad || dayBad) {
+      [nameEl, priceEl, dayEl].find(el => el.classList.contains('is-bad'))?.focus();
+      return null;
+    }
+    return {
+      name,
+      price: Math.round(price * 100) / 100,
+      cycle: document.getElementById('fCycle').value,
+      cat: document.getElementById('fCat').value,
+      day,
+      usage: document.getElementById('fUse').value,
+    };
+  }
+
+  function initAdd() {
+    const btn = document.getElementById('addSubBtn');
+    const form = document.getElementById('addForm');
+    if (!btn || !form) return;
+    btn.addEventListener('click', openAdd);
+    document.getElementById('addClose').addEventListener('click', closeAdd);
+    document.getElementById('addCancel').addEventListener('click', closeAdd);
+    document.getElementById('addScrim').addEventListener('click', closeAdd);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !document.getElementById('addModal').hidden) closeAdd();
+    });
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const rec = readAddForm();
+      if (!rec) return;
+      const s = addSub(rec);
+      closeAdd();
+      if (s) {
+        // The new card may sort below the fold; show the board and flag it.
+        document.querySelector('[data-tab=subs]')?.click();
+        const grid = document.getElementById('subGrid');
+        const card = grid?.querySelector(`[data-id="${s.id}"]`);
+        if (card) {
+          card.scrollIntoView({ block: 'center' });
+          card.classList.add('is-flash');
+          setTimeout(() => card.classList.remove('is-flash'), 1600);
+        }
+      }
+    });
   }
 
   /* ── master render ─────────────────────────────────────── */
@@ -575,9 +778,11 @@
     }, { threshold: 0.2 });
     document.querySelectorAll('.creep-row').forEach(el => io2.observe(el));
 
+    hydrate();
     renderTxns();
     renderAll();
     syncCtas();
+    initAdd();
     initFinaleForm();
   }
 

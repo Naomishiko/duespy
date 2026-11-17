@@ -222,6 +222,7 @@ section{ padding:clamp(64px,8vw,116px) var(--pad); max-width:var(--maxw); margin
 /* Reset feedback: the KPIs are off-screen when the button is clicked, so flag
    the strip. Transitions are globally disabled, so this is a discrete state. */
 .kpi-strip.is-flash{ outline:3px solid var(--coral); outline-offset:-3px; background:var(--paper-2); }
+.sub-card.is-flash{ outline:3px solid var(--coral); outline-offset:2px; }
 .kpi-accent .kpi-val{ color:var(--ink); }
 
 .board-bar{ display:flex; align-items:center; gap:18px; padding:13px 20px; border-bottom:1.8px solid var(--rule); flex-wrap:wrap; background:var(--paper-2); }
@@ -233,7 +234,10 @@ section{ padding:clamp(64px,8vw,116px) var(--pad); max-width:var(--maxw); margin
 }
 .tab:hover{ transform:translate(-1px,-1px); box-shadow:3px 3px 0 var(--rule); }
 .tab.is-active{ background:var(--ink); color:var(--paper); }
-.board-tools{ margin-left:auto; }
+.board-tools{ margin-left:auto; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.btn-add{ padding:9px 15px; font-size:.85rem; background:var(--lime); }
+.btn-add .plus{ font-weight:800; font-size:1.05rem; line-height:1; }
+.btn-add.is-on{ background:var(--coral); color:#fff; }
 .switch{ display:flex; align-items:center; gap:9px; cursor:pointer; font-size:.84rem; color:var(--ink-2); font-weight:500; }
 .switch input{ position:absolute; opacity:0; pointer-events:none; }
 .switch-track{ width:40px; height:23px; border-radius:999px; background:var(--card); border:1.6px solid var(--rule); position:relative; transition:.2s; flex:none; }
@@ -296,7 +300,13 @@ section{ padding:clamp(64px,8vw,116px) var(--pad); max-width:var(--maxw); margin
 .flag.warn{ background:rgba(255,90,60,.14); border-color:var(--coral); color:var(--coral-deep); }
 .flag.good{ background:rgba(23,201,138,.14); border-color:var(--mint); color:#0e7a53; }
 
-.sub-foot{ display:flex; align-items:center; gap:10px; margin-top:13px; padding-top:12px; border-top:1.5px dashed var(--rule-soft); }
+.sub-foot{ display:flex; align-items:center; gap:10px; margin-top:13px; padding-top:12px; border-top:1.5px dashed var(--rule-soft); flex-wrap:wrap; }
+.sub-custom{ position:absolute; top:11px; right:13px; font-family:var(--ff-mono); font-size:.55rem;
+  letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3); background:var(--paper-2);
+  border:1.4px dashed var(--rule-soft); border-radius:var(--r); padding:2px 6px; }
+.sub-del{ background:none; border:0; color:var(--ink-3); font-size:.72rem; font-weight:700; cursor:pointer;
+  padding:6px 2px; text-decoration:underline; text-underline-offset:2px; }
+.sub-del:hover{ color:var(--coral-deep); }
 .sub-next{ font-size:.76rem; color:var(--ink-3); }
 .sub-next b{ color:var(--ink); }
 .sub-act{
@@ -418,8 +428,39 @@ section{ padding:clamp(64px,8vw,116px) var(--pad); max-width:var(--maxw); margin
 .board-foot p{ font-size:.8rem; color:var(--ink-2); max-width:70ch; }
 .board-foot .mono{ color:var(--coral-deep); font-weight:700; }
 
-/* ── method ─────────────────────────────────────────────── */
-.method-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+/* ── add-subscription dialog ───────────────────────────── */
+.modal-scrim{ position:fixed; inset:0; background:rgba(20,20,15,.55); z-index:90; }
+/* Author display rules beat the UA [hidden] rule, so state it explicitly. */
+.modal-scrim[hidden], .modal[hidden]{ display:none; }
+body.is-locked{ overflow:hidden; }
+.modal{ position:fixed; inset:0; z-index:91; display:grid; place-items:center; padding:20px; overflow-y:auto; }
+.modal-card{
+  width:min(560px,100%); background:var(--card); border:1.8px solid var(--rule);
+  border-radius:var(--r-2); box-shadow:var(--shadow-lg); padding:24px 24px 20px; position:relative;
+  max-height:92vh; overflow-y:auto;
+}
+.modal-head{ display:flex; align-items:flex-start; gap:14px; }
+.modal-head h3{ font-family:var(--ff-display); font-size:1.35rem; font-weight:800; }
+.modal-x{
+  margin-left:auto; background:var(--card); border:1.6px solid var(--rule); border-radius:var(--r);
+  width:32px; height:32px; font-size:1.25rem; line-height:1; cursor:pointer; color:var(--ink); flex:none;
+}
+.modal-x:hover{ background:var(--coral); color:#fff; }
+.modal-sub{ color:var(--ink-2); font-size:.86rem; margin-top:8px; }
+.modal form{ margin-top:20px; }
+.field{ display:flex; flex-direction:column; gap:6px; margin-bottom:15px; }
+.field-row{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.field label{ font-family:var(--ff-mono); font-size:.62rem; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3); font-weight:700; }
+.field input, .field select{
+  padding:11px 13px; border-radius:var(--r); border:1.6px solid var(--rule); background:var(--paper-2);
+  color:var(--ink); font-size:.92rem; font-family:inherit; outline:none; width:100%;
+}
+.field input:focus, .field select:focus{ border-color:var(--blue); background:var(--card); }
+.field input.is-bad{ border-color:var(--coral); background:rgba(255,90,60,.06); }
+.field-err{ color:var(--coral-deep); font-size:.74rem; font-weight:600; }
+.modal-foot{ display:flex; gap:10px; justify-content:flex-end; margin-top:22px; padding-top:18px; border-top:1.5px dashed var(--rule-soft); flex-wrap:wrap; }
+
+/* ── method ─────────────────────────────────────────────── */.method-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
 .method-card{
   border:1.8px solid var(--rule); border-radius:var(--r-2); padding:26px 24px;
   background:var(--card); position:relative; transition:.14s;
@@ -583,6 +624,9 @@ section{ padding:clamp(64px,8vw,116px) var(--pad); max-width:var(--maxw); margin
   .kpi:nth-child(2){ border-right:0; }
   .kpi:nth-child(1),.kpi:nth-child(2){ border-bottom:1.8px solid var(--rule); }
   .upcoming-wrap{ grid-template-columns:1fr; }
+  .field-row{ grid-template-columns:1fr; }
+  .board-tools{ margin-left:0; width:100%; }
+  .btn-add{ width:100%; justify-content:center; }
   .cal-side{ border-left:0; border-top:1.8px solid var(--rule); padding-left:0; padding-top:22px; }
   .method-grid,.evidence-grid,.price-grid{ grid-template-columns:1fr 1fr; }
   .ev-wide{ grid-column:span 2; }
