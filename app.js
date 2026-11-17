@@ -143,30 +143,20 @@
     const list = document.getElementById('txnList');
     if (!list) return;
     list.innerHTML = '';
-    let i = 0, found = 0;
-    const step = () => {
-      if (i >= TXNS.length) {
-        document.getElementById('txnNote').textContent = 'Pattern confirmed. Opening the case board.';
-        return;
-      }
-      const t = TXNS[i];
+    let found = 0;
+    TXNS.forEach(t => {
       const li = document.createElement('li');
       li.className = 'txn' + (t.rec ? ' is-recurring' : '');
-      li.style.animationDelay = (i * 90) + 'ms';
       li.innerHTML = `
         <span class="txn-mark">${t.rec ? '◆' : '·'}</span>
         <span class="txn-merch">${t.merch}<small>${t.meta}</small></span>
         <span class="txn-amt">${money(t.amt)}</span>
         ${t.tag ? `<span class="txn-tag">${t.tag}</span>` : ''}`;
       list.appendChild(li);
-      if (t.rec) {
-        found++;
-        document.getElementById('txnRecurring').textContent = found;
-      }
-      i++;
-      setTimeout(step, 520);
-    };
-    setTimeout(step, 400);
+      if (t.rec) found++;
+    });
+    document.getElementById('txnRecurring').textContent = found;
+    document.getElementById('txnNote').textContent = 'Pattern confirmed. Opening the case board.';
   }
 
   /* ── KPIs ──────────────────────────────────────────────── */
