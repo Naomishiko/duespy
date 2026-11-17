@@ -24,6 +24,7 @@
   --coral-deep: #d93a1e;
   --blue:       #2b5cf6;
   --mint:       #17c98a;
+  --mint-deep:  #0e9e6b;
   --plum:       #7a4dff;
 
   --r:   4px;
@@ -394,6 +395,10 @@ section{ padding:clamp(64px,8vw,116px) var(--pad); max-width:var(--maxw); margin
 .adv-btn:hover{ transform:translate(-1px,-1px); box-shadow:2px 2px 0 var(--rule); }
 .adv-btn.cut:hover{ background:var(--coral); color:#fff; }
 .adv-btn.keep:hover{ background:var(--mint); color:#fff; }
+.adv-btn.keep.is-on{ background:var(--mint); border-color:var(--mint); color:#fff; }
+.adv-btn.keep.is-on:hover{ background:var(--mint-deep); border-color:var(--mint-deep); }
+.adv-item.is-kept{ background:var(--card); border-color:var(--mint); }
+.adv-item.is-kept .adv-nm{ color:var(--mint-deep); }
 
 .board-foot{ display:flex; align-items:center; justify-content:space-between; gap:20px; padding:16px 22px; border-top:1.8px solid var(--rule); background:var(--paper-2); flex-wrap:wrap; }
 .board-foot p{ font-size:.8rem; color:var(--ink-2); max-width:70ch; }

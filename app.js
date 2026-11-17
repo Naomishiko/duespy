@@ -152,10 +152,12 @@
     filter: 'all',
     annual: false,
     cut: new Set(),
+    kept: new Set(),
   };
 
   const byId = (id) => SUBSCRIPTIONS.find(s => s.id === id);
   const isCut = (s) => state.cut.has(s.id);
+  const isKept = (s) => state.kept.has(s.id);
 
   /* ── transaction feed (hero) ───────────────────────────── */
   const TXNS = [
@@ -400,6 +402,7 @@
 
     list.innerHTML = ranked.map((x, i) => {
       const cut = isCut(x.s);
+      const kept = isKept(x.s);
       const reasons = [];
       if (x.s.usage === 'none') reasons.push(`unused for ${x.s.lastUsed} days`);
       if (x.c.dup) reasons.push('duplicates another service');
@@ -407,13 +410,13 @@
       if (x.s.usage === 'heavy') reasons.push('in daily use');
       if (!reasons.length) reasons.push(x.s.note.toLowerCase());
       return `
-      <li class="adv-item ${cut ? 'is-cut' : ''}">
+      <li class="adv-item ${cut ? 'is-cut' : ''}${kept ? ' is-kept' : ''}">
         <span class="adv-rank">${i + 1}</span>
         <div class="adv-nm">${x.s.name}<small>${x.s.note}</small></div>
         <div class="adv-reason">${reasons.join(' · ')}</div>
         <div class="adv-cost">${money(x.monthly * 12, 0)}<small>per year</small></div>
         <div class="adv-act">
-          <button class="adv-btn keep" data-keep="${x.s.id}">Keep</button>
+          <button class="adv-btn keep${kept ? ' is-on' : ''}" data-keep="${x.s.id}" aria-pressed="${kept}">${kept ? 'Kept' : 'Keep'}</button>
           <button class="adv-btn cut" data-cut="${x.s.id}">${cut ? 'Restore' : 'Cut'}</button>
         </div>
       </li>`;
@@ -421,11 +424,14 @@
 
     list.querySelectorAll('[data-cut]').forEach(b => b.addEventListener('click', () => {
       const id = b.dataset.cut;
+      state.kept.delete(id);
       state.cut.has(id) ? state.cut.delete(id) : state.cut.add(id);
       renderAll();
     }));
     list.querySelectorAll('[data-keep]').forEach(b => b.addEventListener('click', () => {
-      state.cut.delete(b.dataset.keep);
+      const id = b.dataset.keep;
+      state.cut.delete(id);
+      state.kept.has(id) ? state.kept.delete(id) : state.kept.add(id);
       renderAll();
     }));
   }
@@ -469,6 +475,7 @@
     const rb = document.getElementById('resetBoard');
     if (rb) rb.addEventListener('click', () => {
       state.cut.clear();
+      state.kept.clear();
       state.filter = 'all';
       document.querySelectorAll('.chip').forEach(x => x.classList.toggle('is-active', x.dataset.filter === 'all'));
       renderAll();
