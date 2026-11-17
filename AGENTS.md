@@ -36,18 +36,29 @@ python3 -m http.server 12000
 - Hero transaction feed (`TXNS`) animates in with a staggered reveal.
 
 ## Signup and email
-There is no email capture and no form backend. All signup paths are Stripe
-Payment Links, and the `#signup` modal that used to fake a "filed" confirmation
-was removed. Consequences to keep in mind:
+Two separate paths, do not conflate them:
 
-- Signup emails (receipts, trial reminders) are sent by **Stripe**, not by this
-  site. Nothing here posts an email anywhere.
-- Stripe is in **test mode**, and test mode does not deliver real email. So no
-  email arrives even after a completed test checkout — that is expected, not a
-  bug. Emails begin only once live Payment Links replace the test ones.
-- `STRIPE_LINKS` at the top of `app.js` is the single edit block: keys are
-  `` `${plan}|${cycle}` `` → Payment Link URL. `syncCtas()` resolves them from
-  the active `.bt-opt` cycle and rewrites `a[data-plan]` hrefs.
+**Paid signup → Stripe.** Every pricing CTA is an `a[data-plan]` resolved by
+`syncCtas()` from `STRIPE_LINKS`. Keys are `` `${plan}|${cycle}` ``. Stripe
+collects the buyer's email and sends receipts and trial reminders; this site
+never touches it. Stripe is in **test mode**, and test mode deliberately sends
+no email, so nothing arriving is expected until live links replace the test
+ones.
+
+**Free email capture → Formspree.** The finale section has a real form
+(`#finaleForm`, input `#finaleEmail`) posting to `FORM_ENDPOINT` at the top of
+`app.js`. An earlier version of this form used `onsubmit="return false;"` with
+no `name` attribute, so it silently discarded every address; it was removed and
+has since been rebuilt to actually submit. Set `FORM_ENDPOINT` to the Formspree
+URL (`https://formspree.io/f/xxxxxxxx`) to activate it. While it is empty the
+form validates the address then reports plainly that it is not connected — it
+must never claim success it cannot deliver.
+
+Note the input needs `name="email"`; without it the POST body is empty. There is
+also a `_gotcha` honeypot, and Formspree's free tier allows 50 submissions/month
+(their copy calls it "for testing and development"). Formspree only forwards to
+an inbox — it is not a mailing list, so bulk updates need a list service that
+handles unsubscribe.
 
 ## Gotchas
 - Keep `index.html` id/class hooks in sync with `app.js` selectors.

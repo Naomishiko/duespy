@@ -25,6 +25,21 @@
   };
   /* ======================= END EDIT BLOCK ===================== */
 
+  /* ============================================================
+     NEWSLETTER FORM  ← EDIT THIS ONE VALUE
+     ------------------------------------------------------------
+     Paste your Formspree endpoint here. It looks like:
+       https://formspree.io/f/xxxxxxxx
+     Find it in your Formspree dashboard (https://formspree.io/account)
+     next to the form you created. It is a public URL, so it is safe to
+     keep in this file - there is no secret key.
+
+     While this is empty the form validates the address and says so
+     honestly instead of pretending the signup was recorded.
+     ============================================================ */
+  const FORM_ENDPOINT = ''; // e.g. 'https://formspree.io/f/xxxxxxxx'
+  /* ======================= END EDIT BLOCK ===================== */
+
   const TODAY = new Date();
   TODAY.setHours(0, 0, 0, 0);
 
@@ -513,6 +528,64 @@
     renderTxns();
     renderAll();
     syncCtas();
+    initFinaleForm();
+  }
+
+  /* ── newsletter form ───────────────────────────────────────── */
+  function initFinaleForm() {
+    const form = document.getElementById('finaleForm');
+    if (!form) return;
+    const input = document.getElementById('finaleEmail');
+    const status = document.getElementById('finaleStatus');
+    const btn = form.querySelector('button[type=submit]');
+    const label = btn ? btn.innerHTML : '';
+
+    const say = (msg, kind) => {
+      if (!status) return;
+      status.textContent = msg;
+      status.className = 'finale-status' + (kind ? ' ' + kind : '');
+    };
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = (input.value || '').trim();
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+        say('That address looks incomplete - check it and try again.', 'err');
+        input.focus();
+        return;
+      }
+
+      if (!FORM_ENDPOINT) {
+        say('Form not connected yet - add your Formspree endpoint in app.js.', 'err');
+        return;
+      }
+
+      if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+      say('');
+
+      try {
+        const res = await fetch(FORM_ENDPOINT, {
+          method: 'POST',
+          headers: { Accept: 'application/json' },
+          body: new FormData(form),
+        });
+        if (res.ok) {
+          form.reset();
+          say("You're on the list. Check your inbox for a confirmation.", 'ok');
+          if (btn) btn.textContent = 'You\u2019re in';
+        } else {
+          const data = await res.json().catch(() => ({}));
+          const detail = data.errors && data.errors.length
+            ? data.errors.map(x => x.message).join(' ') : '';
+          say(detail || 'That did not go through. Please try again.', 'err');
+          if (btn) { btn.disabled = false; btn.innerHTML = label; }
+        }
+      } catch (err) {
+        say('Network error - check your connection and try again.', 'err');
+        if (btn) { btn.disabled = false; btn.innerHTML = label; }
+      }
+    });
   }
 
   /* ── Stripe CTA wiring ───────────────────────────────────────── */
