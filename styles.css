@@ -312,6 +312,10 @@ section{ padding:clamp(64px,8vw,116px) var(--pad); max-width:var(--maxw); margin
 
 /* upcoming */
 .upcoming-wrap{ display:grid; grid-template-columns:1fr 296px; gap:22px; }
+/* Grid items default to min-width:auto, so the 46-day rail forces the 1fr
+   track to 3700px+ and pushes the side panels out of the clipped shell.
+   Let the strip shrink so the rail scrolls instead. */
+.cal-strip{ min-width:0; }
 .cal-head h3{ font-size:1.12rem; }
 .cal-head p{ color:var(--ink-2); font-size:.86rem; margin-top:6px; }
 .cal-rail{ margin-top:20px; display:flex; gap:9px; align-items:flex-end; overflow-x:auto; padding:8px 4px 16px; }
