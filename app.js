@@ -23,6 +23,17 @@
     'Precinct|monthly' : 'https://buy.stripe.com/test_fZu7sK0PWg6UfW03IT5gc02',
     'Precinct|annual'  : 'https://buy.stripe.com/test_bJe7sKgOUg6UfW0gvF5gc03',
   };
+
+  /* Live-ness is read from the links rather than a second flag, so pasting
+     real URLs switches the site over on its own and there is nothing to
+     forget. Test links carry a /test_ path segment; live ones do not.
+     Force either state by setting this to true or false. */
+  const CHECKOUT_LIVE = null;
+  const checkoutIsLive = () => {
+    if (CHECKOUT_LIVE !== null) return CHECKOUT_LIVE;
+    const urls = Object.values(STRIPE_LINKS).filter(Boolean);
+    return urls.length > 0 && urls.every(u => !/\/test_/.test(u));
+  };
   /* ======================= END EDIT BLOCK ===================== */
 
   /* ============================================================
@@ -856,12 +867,30 @@
 
   function syncCtas() {
     const cycle = document.querySelector('.bt-opt.is-active')?.dataset.cycle || 'monthly';
+    const live = checkoutIsLive();
     ctaLinks().forEach(a => {
+      if (!live) {
+        // Nothing to sell yet. A test-mode link looks like a real checkout but
+        // takes no money, so send people to the waitlist instead of a dead end.
+        a.href = '#finale';
+        a.removeAttribute('target');
+        a.removeAttribute('rel');
+        if (!a.dataset.label) a.dataset.label = a.innerHTML;
+        a.innerHTML = 'Join the waitlist<span class="dot"></span>';
+        return;
+      }
       const link = STRIPE_LINKS[`${a.dataset.plan}|${cycle}`];
       if (!link) return;
+      if (a.dataset.label) a.innerHTML = a.dataset.label;
       a.href = link;
       a.target = '_blank';
       a.rel = 'noopener';
+    });
+    // "Card required" is a promise we cannot keep before launch.
+    document.querySelectorAll('.price-fine').forEach(el => {
+      el.innerHTML = live
+        ? '14 days free &middot; Card required &middot; Cancel anytime.'
+        : 'Not on sale yet &middot; Join the waitlist for early access.';
     });
   }
 
