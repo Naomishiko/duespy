@@ -153,6 +153,7 @@
     annual: false,
     cut: new Set(),
     kept: new Set(),
+    calSel: null,
   };
 
   const byId = (id) => SUBSCRIPTIONS.find(s => s.id === id);
@@ -317,8 +318,15 @@
       const g = groups.get(i) || [];
       const sum = g.reduce((a, x) => a + x.s.price, 0);
       const h = g.length ? Math.max(4, Math.round((sum / maxDay) * 30)) : 0;
+      const sel = state.calSel === i;
+      const label = g.length
+        ? `${monthNames[d.getMonth()]} ${d.getDate()}, ${g.length} charge${g.length === 1 ? '' : 's'}, ${money(sum)}`
+        : `${monthNames[d.getMonth()]} ${d.getDate()}, nothing scheduled`;
+      const attrs = g.length
+        ? ` role="button" tabindex="0" data-day="${i}" aria-pressed="${sel}" aria-label="${label}"`
+        : ` aria-label="${label}"`;
       return `
-        <div class="cal-day ${i === 0 ? 'today' : ''} ${g.length ? '' : 'empty'}">
+        <div class="cal-day ${i === 0 ? 'today' : ''} ${g.length ? '' : 'empty'}${sel ? ' is-sel' : ''}"${attrs}>
           <p class="dow">${i === 0 ? 'Today' : dowNames[d.getDay()]}</p>
           <p class="dnum">${d.getDate()}</p>
           ${h ? `<div class="cal-bar" style="height:${h}px"></div>` : '<div style="height:5px"></div>'}
@@ -326,6 +334,38 @@
           <p class="cnt">${g.length ? g.map(x => x.s.name.split(' ')[0]).join(', ') : 'clear'}</p>
         </div>`;
     }).join('');
+
+    rail.querySelectorAll('.cal-day[data-day]').forEach(el => {
+      const day = Number(el.dataset.day);
+      const pick = () => {
+        state.calSel = state.calSel === day ? null : day;
+        renderUpcoming();
+      };
+      el.addEventListener('click', pick);
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); }
+      });
+    });
+
+    // selected-day detail
+    const detail = document.getElementById('calDetail');
+    if (detail) {
+      const sel = state.calSel;
+      if (sel === null) {
+        detail.innerHTML = '<p class="cd-empty">Pick a day to see what lands on it.</p>';
+      } else {
+        const d = new Date(TODAY.getTime() + sel * 864e5);
+        const g = groups.get(sel) || [];
+        const head = `${monthNames[d.getMonth()]} ${d.getDate()}`;
+        if (!g.length) {
+          detail.innerHTML = `<p class="cd-head">${head}</p><p class="cd-empty">Nothing scheduled that day.</p>`;
+        } else {
+          const tot = g.reduce((a, x) => a + x.s.price, 0);
+          detail.innerHTML = `<p class="cd-head">${head} · ${g.length} charge${g.length === 1 ? '' : 's'} · ${money(tot)}</p>
+            <ul class="cd-list">${g.map(x => `<li><span>${x.s.name}</span><b>${money(x.s.price)}</b></li>`).join('')}</ul>`;
+        }
+      }
+    }
 
     // biggest hit
     const big = charges.slice().sort((a, b) => b.s.price - a.s.price)[0];
@@ -476,6 +516,7 @@
     if (rb) rb.addEventListener('click', () => {
       state.cut.clear();
       state.kept.clear();
+      state.calSel = null;
       state.filter = 'all';
       document.querySelectorAll('.chip').forEach(x => x.classList.toggle('is-active', x.dataset.filter === 'all'));
       renderAll();
