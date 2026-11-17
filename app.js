@@ -431,6 +431,11 @@
       document.querySelectorAll('.tab').forEach(x => { x.classList.remove('is-active'); x.setAttribute('aria-selected', 'false'); });
       t.classList.add('is-active'); t.setAttribute('aria-selected', 'true');
       document.querySelectorAll('.panel').forEach(p => p.classList.toggle('is-active', p.dataset.panel === t.dataset.tab));
+      // Panels differ a lot in height, so keeping the old scroll offset can hide
+      // the swap above the fold. Pull the tab bar back into view when it isn't.
+      const bar = document.querySelector('.board-bar');
+      const navH = document.getElementById('nav')?.offsetHeight || 0;
+      if (bar && bar.getBoundingClientRect().top < navH) bar.scrollIntoView({ block: 'start' });
     }));
 
     // filters
@@ -447,7 +452,20 @@
 
     // reset
     const rb = document.getElementById('resetBoard');
-    if (rb) rb.addEventListener('click', () => { state.cut.clear(); state.filter = 'all'; renderAll(); });
+    if (rb) rb.addEventListener('click', () => {
+      state.cut.clear();
+      state.filter = 'all';
+      document.querySelectorAll('.chip').forEach(x => x.classList.toggle('is-active', x.dataset.filter === 'all'));
+      renderAll();
+      // The numbers live at the top of the board, so scroll them into view and
+      // flag the strip: otherwise the reset edits state entirely off-screen.
+      const strip = document.querySelector('.kpi-strip');
+      if (strip) {
+        strip.scrollIntoView({ block: 'center' });
+        strip.classList.add('is-flash');
+        setTimeout(() => strip.classList.remove('is-flash'), 1400);
+      }
+    });
 
     // pricing billing toggle
     document.querySelectorAll('.bt-opt').forEach(b => b.addEventListener('click', () => {

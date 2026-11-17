@@ -227,6 +227,9 @@ section{ padding:clamp(64px,8vw,116px) var(--pad); max-width:var(--maxw); margin
 .kpi-val{ font-family:var(--ff-display); font-size:clamp(1.85rem,3.1vw,2.6rem); font-weight:800; margin-top:9px; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
 .kpi-meta{ font-size:.8rem; color:var(--ink-3); margin-top:5px; }
 .kpi-accent{ background:var(--lime); }
+/* Reset feedback: the KPIs are off-screen when the button is clicked, so flag
+   the strip. Transitions are globally disabled, so this is a discrete state. */
+.kpi-strip.is-flash{ outline:3px solid var(--coral); outline-offset:-3px; background:var(--paper-2); }
 .kpi-accent .kpi-val{ color:var(--ink); }
 
 .board-bar{ display:flex; align-items:center; gap:18px; padding:13px 20px; border-bottom:1.8px solid var(--rule); flex-wrap:wrap; background:var(--paper-2); }
