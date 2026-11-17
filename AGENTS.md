@@ -49,10 +49,9 @@ ones.
 (`#finaleForm`, input `#finaleEmail`) posting to `FORM_ENDPOINT` at the top of
 `app.js`. An earlier version of this form used `onsubmit="return false;"` with
 no `name` attribute, so it silently discarded every address; it was removed and
-has since been rebuilt to actually submit. Set `FORM_ENDPOINT` to the Formspree
-URL (`https://formspree.io/f/xxxxxxxx`) to activate it. While it is empty the
-form validates the address then reports plainly that it is not connected — it
-must never claim success it cannot deliver.
+has since been rebuilt to actually submit. `FORM_ENDPOINT` is now set to a live
+Formspree endpoint, so the form really posts; the empty-endpoint branch remains
+as a guard and must never claim success it cannot deliver.
 
 Note the input needs `name="email"`; without it the POST body is empty. There is
 also a `_gotcha` honeypot, and Formspree's free tier allows 50 submissions/month
@@ -76,12 +75,25 @@ handles unsubscribe.
   offsets; `scroll-padding-top` on `html` is 86px, so scrollIntoView targets
   should clear the nav height.
 
+## Board conventions worth preserving
+- The cancel advisor ranks by **verdict tier first, price second**
+  (`TIER = {cancel:0, review:1, keep:2}`, kept items sink to tier 3). Ranking by
+  raw cost instead put the priciest service on top regardless of whether it was
+  in active use. Cost only breaks ties inside a tier.
+- The advisor summary is **three mutually exclusive buckets** (cut / review /
+  keep) that must sum to total spend. Two buckets previously left `review` in
+  neither, hiding over half the total.
+- `.stamp` is the small verdict badge. The finale's decorative seal is
+  `.stamp-seal` — they were both `.stamp` once, and the later rule won, which
+  rendered every badge as a rotated 142x99px block.
+
 ## Known open items
 - No domain is owned yet. `duespy.com` is **not registered** (RDAP 404, DNS
   NXDOMAIN) and the footer no longer prints any domain, so nothing advertises an
   address the project does not control. Register one before adding it back.
 - Stripe is in test mode; going live needs the sandbox claimed and the four test
-  Payment Links swapped for live ones.
+  Payment Links swapped for live ones. Claiming happens entirely inside the
+  Stripe dashboard and cannot be done or verified from this repo.
 - No `CNAME` file: the site is served from the `naomishiko.github.io/duespy/`
   project path. Adding a custom domain requires a `CNAME` file, an apex A record
   to GitHub's four IPs (or an ALIAS/ANAME), a `www` CNAME to
